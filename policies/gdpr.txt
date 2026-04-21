@@ -1,0 +1,80 @@
+# GDPR Compliance Policy
+# Privilege tiers map to GDPR sensitivity:
+#   severity:critical  → Article 9 special categories  → g = 1%  of rmax
+#   severity:high      → Standard personal data         → g = 5%  of rmax
+#   severity:medium    → Pseudonymised / indirect data  → g = 20% of rmax
+#
+# Reference: Regulation (EU) 2016/679
+
+name: GDPR Compliance Policy
+
+# ── Article 9: Special Categories (highest restriction) ──────────────────────
+
+DENY: health and medical data
+  severity: critical
+  article: 9
+  match: health, medical, diagnosis, condition, medication, prescription, disease, illness, disability, mental health, psychiatric, therapy, hospital, doctor, patient, sick leave
+  regex: (?i)(medical|health|diagnosis|treatment)\s+(record|history|data|information)
+
+DENY: biometric data
+  severity: critical
+  article: 9
+  match: biometric, fingerprint, facial recognition, retina, iris scan, voice print, dna, genetic
+
+DENY: racial and ethnic origin
+  severity: critical
+  article: 9
+  match: race, ethnicity, ethnic origin, nationality background, racial, heritage
+
+DENY: political opinions
+  severity: critical
+  article: 9
+  match: political opinion, political view, political affiliation, votes for, political party, political belief
+
+DENY: religious and philosophical beliefs
+  severity: critical
+  article: 9
+  match: religion, religious belief, faith, church, mosque, synagogue, temple, philosophical belief, denomination
+
+DENY: sexual orientation and gender identity
+  severity: critical
+  article: 9
+  match: sexual orientation, gender identity, sexuality, gay, lesbian, transgender, queer
+
+DENY: criminal records and convictions
+  severity: critical
+  article: 10
+  match: criminal record, conviction, arrested, charged, offence, criminal history, prison, sentence
+
+# ── Article 4: Standard Personal Data ────────────────────────────────────────
+
+DENY: direct identifiers
+  severity: high
+  article: 4
+  match: full name, first name, last name, date of birth, national id, passport, social security, ssn, driver license
+  regex: \b\d{3}-\d{2}-\d{4}\b
+
+DENY: contact details
+  severity: high
+  article: 4
+  match: email address, phone number, home address, postal address, mobile number, personal contact
+  regex: \b[\w.+\-]+@[\w\-]+\.[\w.]+\b
+
+DENY: financial data
+  severity: high
+  article: 4
+  match: bank account, credit card, salary, income, financial, iban, sort code, account number
+  regex: \b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b
+
+DENY: location and movement data
+  severity: medium
+  article: 4
+  match: location, gps, tracking, where is, live location, current address, last seen, movement
+
+# ── ALLOW: Legitimate processing ─────────────────────────────────────────────
+
+ALLOW: anonymised aggregates
+ALLOW: public company information
+ALLOW: technical documentation
+ALLOW: job titles and organisational structure
+ALLOW: general statistical information

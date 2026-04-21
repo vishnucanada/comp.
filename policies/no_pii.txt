@@ -1,0 +1,33 @@
+# No PII Policy — Company Standard
+# Prevents the model from revealing or generating personal information.
+#
+# Format:
+#   DENY: category name
+#     match: keyword1, keyword2, ...   (substring match against prompt)
+#     regex: pattern                   (regex match against prompt)
+#   ALLOW: category name
+
+name: No PII Policy
+
+DENY: personal names
+  match: what is his name, what is her name, who is, tell me the name, full name, person's name, employee name, staff name
+  regex: (?i)(name of|named|called)\s+[A-Z][a-z]+
+
+DENY: personal email addresses
+  match: email address, contact email, email of, send email to, reach out to, email them
+  regex: [\w.+\-]+@[\w\-]+\.[\w.]+
+
+DENY: phone numbers
+  match: phone number, telephone, mobile number, call them, cell number, contact number, their number
+  regex: \b(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b
+
+DENY: home addresses
+  match: home address, where does he live, where does she live, where do they live, residential address, lives at, address of
+
+DENY: national id numbers
+  match: social security, ssn, national id, passport number, driver license number, date of birth, dob
+
+ALLOW: general information
+ALLOW: technical content
+ALLOW: public company information
+ALLOW: job titles and roles

@@ -1,0 +1,36 @@
+name: Legal & Compliance AI Policy
+
+DENY: personal names
+  match: full name, employee name, first name, last name, name of employee, who is, tell me the name
+  regex: (?i)(name of|named|full name of)\s+[A-Z][a-z]+
+
+DENY: home addresses
+  match: home address, personal address, where does, where do they live, residential address, lives at
+
+DENY: personal phone numbers
+  match: phone number, personal phone, cell number, mobile number, telephone, how to call, contact number
+  regex: \b(\+\d{1,2}\s?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b
+
+DENY: personal email addresses
+  match: personal email, email address, email of, how to email, contact email, reach out to
+  regex: \b[\w.+\-]+@[\w\-]+\.[\w.]+\b
+
+DENY: salary and compensation
+  match: salary, compensation, bonus, pay, earnings, how much does, how much is, wage, income, package
+
+DENY: medical and health information
+  match: medical, health record, diagnosis, condition, sick, disability, prescription, doctor, treatment
+
+DENY: credentials and secrets
+  match: password, api key, secret key, token, credentials, login, access key, private key
+  regex: (?i)(password|api[_\s]?key|secret|token)\s*[:=]\s*\S+
+
+DENY: government identification
+  match: social security, ssn, passport number, driver license, national id, government id, date of birth, dob
+  regex: \b\d{3}-\d{2}-\d{4}\b
+
+ALLOW: job titles and roles
+ALLOW: public company information
+ALLOW: technical documentation
+ALLOW: general business processes
+ALLOW: product features
