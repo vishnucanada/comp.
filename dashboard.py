@@ -1,6 +1,8 @@
+import os
 import sys
 import json
 import re
+import urllib.request as _urllib
 from pathlib import Path
 from typing import List, Optional
 
@@ -19,6 +21,8 @@ POLICIES_DIR = Path(__file__).parent / "policies"
 POLICIES_DIR.mkdir(exist_ok=True)
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def sanitize(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "", name)
 
@@ -35,16 +39,101 @@ def policy_to_text(policy) -> str:
     return "\n".join(lines).strip()
 
 
+def _load_policy(name: str) -> Policy | None:
+    safe = sanitize(name)
+    txt  = POLICIES_DIR / f"{safe}.txt"
+    meta = POLICIES_DIR / f"{safe}.json"
+    if txt.exists():
+        return Policy.from_file(txt)
+    if meta.exists():
+        try:
+            desc = json.loads(meta.read_text()).get("description", "")
+            if desc:
+                from translator import PolicyTranslator
+                return PolicyTranslator().translate(desc)
+        except Exception:
+            pass
+    return None
+
+
+# ── LLM backends ─────────────────────────────────────────────────────────────
+
+def _ollama_model() -> str | None:
+    """Return the best available Ollama model name, or None if Ollama isn't running."""
+    preferred = "qwen2.5:0.5b"
+    try:
+        req = _urllib.Request("http://localhost:11434/api/tags")
+        with _urllib.urlopen(req, timeout=3) as r:
+            models = [m["name"] for m in json.loads(r.read()).get("models", [])]
+        if not models:
+            return None
+        return preferred if preferred in models else models[0]
+    except Exception:
+        return None
+
+
+def _ollama_chat(message: str, history: list[dict]) -> tuple[str, str] | None:
+    model = _ollama_model()
+    if not model:
+        return None
+    try:
+        body = json.dumps({
+            "model": model,
+            "messages": history + [{"role": "user", "content": message}],
+            "stream": False,
+        }).encode()
+        req = _urllib.Request(
+            "http://localhost:11434/api/chat",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urllib.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())["message"]["content"], f"ollama/{model}"
+    except Exception:
+        return None
+
+
+def _anthropic_chat(message: str, history: list[dict]) -> tuple[str, str] | None:
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
+        return None
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=key)
+        msgs = history + [{"role": "user", "content": message}]
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=msgs,
+        )
+        return resp.content[0].text, "claude-haiku-4-5"
+    except Exception:
+        return None
+
+
+def _get_response(message: str, history: list[dict]) -> tuple[str, str]:
+    for fn in (_ollama_chat, _anthropic_chat):
+        result = fn(message, history)
+        if result:
+            return result
+    return (
+        "No LLM backend detected. "
+        "Run `ollama pull qwen2.5:0.5b && ollama serve`, "
+        "or set the ANTHROPIC_API_KEY environment variable.",
+        "none",
+    )
+
+
+# ── Models ───────────────────────────────────────────────────────────────────
+
 class PolicySaveRequest(BaseModel):
     name: str
     description: str
     structured: Optional[str] = None
 
-
 class TestCase(BaseModel):
     prompt: str
     expected: str
-
 
 class EnactRequest(BaseModel):
     policy_name: str
@@ -53,20 +142,40 @@ class EnactRequest(BaseModel):
     low_privilege: int = 1
     rmax: int = 100
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    policy_name: Optional[str] = None
+    history: List[ChatMessage] = []
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/favicon.png")
 async def favicon():
     return FileResponse(Path(__file__).parent / "favicon.png", media_type="image/png")
 
-
 @app.get("/", response_class=HTMLResponse)
 async def landing():
     return HTMLResponse((Path(__file__).parent / "landing.html").read_text())
 
-
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard():
     return HTMLResponse((Path(__file__).parent / "dashboard.html").read_text())
+
+
+@app.get("/api/models")
+async def list_models():
+    backends = []
+    model = _ollama_model()
+    if model:
+        backends.append({"type": "ollama", "active": model})
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        backends.append({"type": "anthropic", "active": "claude-haiku-4-5"})
+    return {"backends": backends, "ready": bool(backends)}
 
 
 @app.get("/api/policies")
@@ -122,47 +231,32 @@ async def delete_policy(name: str):
 @app.post("/api/enact")
 async def enact_policy(req: EnactRequest):
     structured_text = None
-    translation_note = None
-
-    # Attempt translation via Claude
     try:
         from translator import PolicyTranslator
-        translator = PolicyTranslator()
-        policy = translator.translate(req.description)
+        policy = PolicyTranslator().translate(req.description)
         structured_text = policy_to_text(policy)
-    except ValueError:
-        # No API key — fall back to treating description as structured format
-        translation_note = "no_api_key"
-        try:
-            policy = Policy.from_text(req.description)
-            structured_text = req.description
-        except Exception as e:
-            raise HTTPException(400, f"Set ANTHROPIC_API_KEY to enable translation, or write structured policy directly. Error: {e}")
     except Exception as e:
         raise HTTPException(500, f"Translation error: {e}")
 
-    # Run test cases
     compiler = PolicyCompiler(policy)
     results = []
     for tc in req.test_cases:
         violated, categories = compiler.check(tc.prompt)
-        privilege = req.low_privilege if violated else req.rmax
+        privilege     = req.low_privilege if violated else req.rmax
         privilege_pct = round((privilege / req.rmax) * 100)
-        decision = "DENY" if violated else "ALLOW"
-        expected = tc.expected.upper()
+        decision      = "DENY" if violated else "ALLOW"
         results.append({
-            "prompt": tc.prompt,
-            "expected": expected,
-            "decision": decision,
-            "correct": decision == expected,
-            "violations": categories,
-            "privilege": privilege,
+            "prompt":        tc.prompt,
+            "expected":      tc.expected.upper(),
+            "decision":      decision,
+            "correct":       decision == tc.expected.upper(),
+            "violations":    categories,
+            "privilege":     privilege,
             "privilege_pct": privilege_pct,
         })
 
     correct = sum(1 for r in results if r["correct"])
 
-    # Auto-save
     safe = sanitize(req.policy_name)
     if safe:
         (POLICIES_DIR / f"{safe}.json").write_text(json.dumps({"description": req.description}))
@@ -171,13 +265,41 @@ async def enact_policy(req: EnactRequest):
 
     return {
         "structured": structured_text,
-        "translation_note": translation_note,
-        "results": results,
+        "results":    results,
         "summary": {
-            "total": len(results),
-            "correct": correct,
+            "total":    len(results),
+            "correct":  correct,
             "accuracy": round(correct / len(results) * 100) if results else 0,
         },
+    }
+
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    decision   = "ALLOW"
+    violations: list[str] = []
+
+    if req.policy_name:
+        policy = _load_policy(req.policy_name)
+        if policy:
+            violated, violations = PolicyCompiler(policy).check(req.message)
+            decision = "DENY" if violated else "ALLOW"
+
+    if decision == "DENY":
+        return {
+            "decision":   "DENY",
+            "violations": violations,
+            "response":   "I'm not able to provide that — it's restricted by the active policy.",
+            "model":      "policy-enforcer",
+        }
+
+    history = [{"role": m.role, "content": m.content} for m in req.history]
+    response, model = _get_response(req.message, history)
+    return {
+        "decision":   "ALLOW",
+        "violations": [],
+        "response":   response,
+        "model":      model,
     }
 
 

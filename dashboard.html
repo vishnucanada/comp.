@@ -418,9 +418,7 @@ async function enact() {
 
     if (data.structured) {
       compiledText = data.structured;
-      const note = data.translation_note === 'no_api_key'
-        ? 'No ANTHROPIC_API_KEY found — parsed as structured policy format.'
-        : 'Compiled from your plain English description using Claude.';
+      const note = 'Extracted from your policy description using NLP.';
       showCompiledPanel(data.structured, note);
     }
 
