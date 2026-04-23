@@ -286,10 +286,11 @@ async def chat(req: ChatRequest):
             decision = "DENY" if violated else "ALLOW"
 
     if decision == "DENY":
+        rules = ", ".join(violations)
         return {
             "decision":   "DENY",
             "violations": violations,
-            "response":   "I'm not able to provide that — it's restricted by the active policy.",
+            "response":   f"ERROR this prompt has been blocked by policy [{rules}]",
             "model":      "policy-enforcer",
         }
 

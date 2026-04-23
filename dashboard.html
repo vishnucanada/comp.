@@ -26,31 +26,25 @@
       height: 100vh; display: flex; flex-direction: column; overflow: hidden;
     }
 
+    /* ── Nav ── */
     nav {
       height: 50px; background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; padding: 0 20px; gap: 10px; flex-shrink: 0;
     }
     .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; letter-spacing: -.4px; text-decoration: none; color: var(--text); }
-    .logo-icon {
-      width: 24px; height: 24px; background: #0a0a0a;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center;
-      font-size: 12px; color: #fff;
-    }
+    .logo-icon { width: 24px; height: 24px; background: #0a0a0a; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #fff; }
     nav .sub { font-size: 12px; color: var(--text-3); }
     nav .spacer { flex: 1; }
-    .live-badge {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 11px; color: var(--text-3);
-      border: 1px solid var(--border);
-      padding: 3px 10px; border-radius: 20px;
-    }
+    .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
 
+    /* ── Layout ── */
     .layout { display: flex; flex: 1; overflow: hidden; }
 
+    /* ── Sidebar ── */
     aside {
-      width: 200px; flex-shrink: 0; background: var(--surface);
+      width: 190px; flex-shrink: 0; background: var(--surface);
       border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;
     }
     .sidebar-label { padding: 14px 14px 7px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); }
@@ -65,21 +59,113 @@
     .policy-item.active { background: var(--bg); color: var(--text); border-left: 2px solid var(--text); padding-left: 8px; font-weight: 500; }
     .sidebar-foot { padding: 10px; border-top: 1px solid var(--border); }
     .btn-new {
-      width: 100%; padding: 6px 12px;
-      background: transparent; border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text-3);
-      font-family: var(--sans); font-size: 12px;
-      cursor: pointer; transition: all .12s;
-      display: flex; align-items: center; gap: 6px; justify-content: center;
+      width: 100%; padding: 6px 12px; background: transparent; border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-3); font-family: var(--sans); font-size: 12px;
+      cursor: pointer; transition: all .12s; display: flex; align-items: center; gap: 6px; justify-content: center;
     }
     .btn-new:hover { border-color: var(--text-3); color: var(--text-2); }
 
-    main { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+    /* ── Work area ── */
+    .work-area { display: flex; flex: 1; overflow: hidden; }
 
+    /* ── Policy panel ── */
+    .policy-panel {
+      width: 480px; flex-shrink: 0;
+      overflow-y: auto; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 14px;
+      border-right: 1px solid var(--border);
+    }
+
+    /* ── Chat panel ── */
+    .chat-panel {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .chat-head {
+      height: 46px; flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 18px; gap: 10px;
+      background: var(--surface);
+    }
+    .chat-policy-name {
+      font-size: 12.5px; font-weight: 500; color: var(--text-3);
+      flex: 1;
+    }
+    .chat-policy-name.active { color: var(--text); }
+    .model-badge {
+      font-size: 10.5px; color: var(--text-3); font-family: var(--mono);
+      background: var(--card); border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 4px;
+    }
+    .chat-messages {
+      flex: 1; overflow-y: auto;
+      padding: 20px 18px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .chat-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--text-3); gap: 10px; text-align: center;
+      padding: 40px 20px;
+    }
+    .chat-empty-icon { font-size: 28px; filter: grayscale(1); opacity: .4; }
+    .chat-empty-title { font-size: 13.5px; font-weight: 500; color: var(--text-2); }
+    .chat-empty-sub { font-size: 12px; color: var(--text-3); max-width: 260px; line-height: 1.65; }
+
+    /* Message bubbles */
+    .msg { display: flex; flex-direction: column; max-width: 72%; }
+    .msg-user { align-self: flex-end; }
+    .msg-ai   { align-self: flex-start; }
+    .msg-bubble {
+      padding: 10px 14px; border-radius: 12px;
+      font-size: 13.5px; line-height: 1.65;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .msg-user .msg-bubble { background: var(--text); color: var(--bg); border-bottom-right-radius: 3px; }
+    .msg-ai   .msg-bubble { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .msg-denied .msg-bubble { background: var(--surface); color: var(--text-3); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .msg-thinking .msg-bubble { color: var(--text-3); background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+    .msg-meta {
+      font-size: 10.5px; color: var(--text-3);
+      margin-top: 5px; display: flex; align-items: center; gap: 6px;
+    }
+    .msg-user .msg-meta { align-self: flex-end; }
+    .deny-badge {
+      font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+      color: var(--text-3); border: 1px solid var(--border);
+      background: var(--card); padding: 1px 6px; border-radius: 3px;
+    }
+
+    /* Chat input */
+    .chat-input-area {
+      flex-shrink: 0; padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: flex-end; gap: 10px;
+      background: var(--bg);
+    }
+    .chat-input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 14px;
+      color: var(--text); font-family: var(--sans); font-size: 13.5px;
+      outline: none; resize: none; line-height: 1.5;
+      transition: border-color .12s; max-height: 120px; overflow-y: auto;
+    }
+    .chat-input:focus { border-color: var(--text-3); }
+    .chat-input::placeholder { color: var(--text-3); }
+    .chat-send {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: var(--text); color: var(--bg);
+      border: none; border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; transition: opacity .12s;
+    }
+    .chat-send:hover { opacity: .75; }
+    .chat-send:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* ── Policy panel cards ── */
     .card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-    .card-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .card-head { padding: 11px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 9px; }
     .card-title { font-size: 12.5px; font-weight: 600; flex: 1; }
-    .card-body { padding: 16px; }
+    .card-body { padding: 15px; }
 
     .input {
       background: var(--surface); border: 1px solid var(--border);
@@ -92,9 +178,9 @@
     .name-row { display: flex; gap: 10px; margin-bottom: 12px; }
     .name-row .input { flex: 1; }
     textarea.editor {
-      width: 100%; height: 190px;
+      width: 100%; height: 160px;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 7px; padding: 12px;
+      border-radius: 7px; padding: 11px;
       color: var(--text-2); font-family: var(--sans); font-size: 13px; line-height: 1.7;
       resize: vertical; outline: none; transition: border-color .12s;
     }
@@ -104,8 +190,7 @@
     .compiled-panel { display: none; }
     .compiled-panel.visible { display: block; }
     .compiled-toggle {
-      display: flex; align-items: center; gap: 7px;
-      padding: 0; background: none; border: none;
+      display: flex; align-items: center; gap: 7px; padding: 0; background: none; border: none;
       font-family: var(--sans); font-size: 12px; font-weight: 500;
       color: var(--text-3); cursor: pointer; transition: color .12s;
     }
@@ -115,16 +200,15 @@
     .compiled-body { display: none; margin-top: 10px; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
     .compiled-body.open { display: block; }
     pre.compiled-text {
-      margin: 0; padding: 12px;
-      background: var(--surface);
+      margin: 0; padding: 12px; background: var(--surface);
       font-family: var(--mono); font-size: 11.5px; line-height: 1.72;
       color: var(--text-2); overflow-x: auto; white-space: pre-wrap; word-break: break-word;
     }
     .compiled-note { padding: 7px 12px; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); }
 
     .btn {
-      padding: 6px 13px; border-radius: 7px;
-      font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+      padding: 6px 12px; border-radius: 7px;
+      font-family: var(--sans); font-size: 12px; font-weight: 500;
       cursor: pointer; border: none; transition: all .12s;
       display: inline-flex; align-items: center; gap: 5px;
     }
@@ -134,13 +218,13 @@
     .btn-ghost:hover { color: var(--text); border-color: var(--text-3); }
     .btn-del { background: transparent; color: var(--text-3); border: none; padding: 3px 7px; border-radius: 5px; cursor: pointer; font-size: 12.5px; transition: color .12s; }
     .btn-del:hover { color: var(--text-2); }
-    .btn-enact { background: #0a0a0a; color: #fff; padding: 8px 22px; font-size: 13px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; transition: opacity .12s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-enact { background: #0a0a0a; color: #fff; padding: 8px 20px; font-size: 12.5px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; transition: opacity .12s; display: inline-flex; align-items: center; gap: 6px; }
     .btn-enact:hover { opacity: .75; }
     .btn-enact:disabled { opacity: .35; cursor: not-allowed; }
 
     .test-table { width: 100%; border-collapse: collapse; }
-    .test-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); padding: 0 14px 8px; }
-    .test-table td { padding: 5px 14px; vertical-align: middle; }
+    .test-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); padding: 0 12px 8px; }
+    .test-table td { padding: 5px 12px; vertical-align: middle; }
     .test-table tr.tc-row:not(:last-child) td { border-bottom: 1px solid var(--border); }
     .test-table .input { width: 100%; }
     select.input { appearance: none; cursor: pointer; }
@@ -154,22 +238,26 @@
     .stat { display: flex; flex-direction: column; gap: 2px; }
     .stat-val { font-size: 20px; font-weight: 700; line-height: 1; color: var(--text); }
     .stat-lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
-    .acc-bar { height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; margin: 10px 0 16px; }
+    .acc-bar { height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; margin: 10px 0 14px; }
     .acc-fill { height: 100%; border-radius: 2px; background: var(--text); transition: width .8s cubic-bezier(.4,0,.2,1); }
-    .result-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+    .result-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
     .result-row:last-child { border-bottom: none; }
     .r-correct { font-size: 13px; color: var(--text); flex-shrink: 0; }
     .r-wrong   { font-size: 13px; color: var(--text-3); flex-shrink: 0; }
     .r-badge { width: 46px; text-align: center; flex-shrink: 0; padding: 2px 0; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .4px; border: 1px solid var(--border); color: var(--text-2); }
     .r-prompt { flex: 1; color: var(--text-2); font-size: 12px; }
     .r-cats   { font-size: 10.5px; color: var(--text-3); font-family: var(--mono); }
-    .priv-bar { width: 56px; height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+    .priv-bar { width: 50px; height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
     .priv-fill { height: 100%; border-radius: 2px; background: var(--text-3); }
     .priv-pct { font-size: 10.5px; color: var(--text-3); width: 28px; text-align: right; flex-shrink: 0; }
 
-    .empty { text-align: center; padding: 28px 20px; color: var(--text-3); font-size: 12px; }
+    .empty { text-align: center; padding: 24px 16px; color: var(--text-3); font-size: 12px; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { width: 13px; height: 13px; border: 2px solid rgba(0,0,0,.15); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    .spinner { width: 12px; height: 12px; border: 2px solid rgba(0,0,0,.12); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .thinking-dots { animation: blink 1.2s ease-in-out infinite; letter-spacing: 2px; }
+
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 2px; }
@@ -188,6 +276,8 @@
 </nav>
 
 <div class="layout">
+
+  <!-- Sidebar -->
   <aside>
     <div class="sidebar-label">Policies</div>
     <div class="policy-list" id="policyList"><div class="empty">Loading…</div></div>
@@ -196,105 +286,172 @@
     </div>
   </aside>
 
-  <main>
+  <div class="work-area">
 
-    <div class="card">
-      <div class="card-head">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <rect x="2" y="2" width="12" height="12" rx="2" stroke="#aaa" stroke-width="1.5"/>
-          <path d="M5 6h6M5 9h4" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <span class="card-title">Policy</span>
-        <button class="btn btn-ghost" id="saveBtn" onclick="savePolicy()">Save</button>
-      </div>
-      <div class="card-body">
-        <div class="name-row">
-          <input class="input" id="policyName" placeholder="Policy name (e.g. gdpr, hr_confidentiality)" />
+    <!-- Policy panel (left) -->
+    <div class="policy-panel">
+
+      <!-- Policy editor -->
+      <div class="card">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="12" height="12" rx="2" stroke="#aaa" stroke-width="1.5"/>
+            <path d="M5 6h6M5 9h4" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="card-title">Policy</span>
+          <button class="btn btn-ghost" id="saveBtn" onclick="savePolicy()">Save</button>
         </div>
-        <textarea class="editor" id="editor"
-          placeholder="Describe your policy in plain English.
+        <div class="card-body">
+          <div class="name-row">
+            <input class="input" id="policyName" placeholder="Policy name (e.g. gdpr, hr_confidentiality)" />
+          </div>
+          <textarea class="editor" id="editor"
+            placeholder="Describe your policy in plain English.
 
-For example:
-  Staff should not share personal identifiers like names, addresses, emails, or phone numbers with external parties. Medical and health information must be kept strictly confidential. Financial data including account numbers and salaries is restricted. General company information, documentation, and public-facing content is permitted."
-          spellcheck="true"
+Example:
+  Staff must not share personal identifiers, addresses, emails, phone numbers, medical records, or financial data. General company documentation and public information is permitted."
+            spellcheck="true"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Compiled policy -->
+      <div class="card compiled-panel" id="compiledPanel">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M4 4l4 4-4 4M9 12h3" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="card-title">Compiled Policy</span>
+          <button class="compiled-toggle" id="compiledToggle" onclick="toggleCompiled()">
+            <span class="chevron">▶</span> View structured rules
+          </button>
+        </div>
+        <div class="compiled-body" id="compiledBody">
+          <pre class="compiled-text" id="compiledText"></pre>
+          <div class="compiled-note" id="compiledNote"></div>
+        </div>
+      </div>
+
+      <!-- Test cases -->
+      <div class="card">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path d="M3 4h10M3 8h7M3 12h5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span class="card-title">Test Cases</span>
+          <button class="btn btn-ghost" style="margin-right:6px" onclick="loadDefaults()">Defaults</button>
+          <button class="btn btn-ghost" onclick="addRow()">+ Add</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="test-table">
+            <thead>
+              <tr>
+                <th style="padding-left:16px;padding-top:11px;padding-bottom:7px">Prompt</th>
+                <th style="width:86px;padding-top:11px;padding-bottom:7px">Expected</th>
+                <th style="width:36px"></th>
+              </tr>
+            </thead>
+            <tbody id="tcBody">
+              <tr id="emptyRow">
+                <td colspan="3" class="empty">No test cases — load defaults or add your own</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-row">
+        <span id="statusMsg"></span>
+        <button class="btn-enact" id="enactBtn" onclick="enact()">Enact Policy</button>
+      </div>
+
+      <!-- Results -->
+      <div class="card results-panel" id="resultsPanel">
+        <div class="card-head">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/>
+            <path d="M5.5 8l1.5 1.5 3.5-3" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="card-title">Enforcement Results</span>
+          <span id="accuracyLabel" style="font-size:11.5px;color:var(--text-3)"></span>
+        </div>
+        <div class="card-body">
+          <div class="summary-stats" id="summaryStats"></div>
+          <div class="acc-bar"><div class="acc-fill" id="accFill" style="width:0%"></div></div>
+          <div id="resultsList"></div>
+        </div>
+      </div>
+
+    </div><!-- /policy-panel -->
+
+    <!-- Chat panel (right) -->
+    <div class="chat-panel">
+      <div class="chat-head">
+        <span class="chat-policy-name" id="chatPolicyName">Select a policy to activate it in chat</span>
+        <span class="model-badge" id="modelBadge">detecting model…</span>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-empty" id="chatEmpty">
+          <div class="chat-empty-icon">💬</div>
+          <div class="chat-empty-title">Chat with policy enforcement</div>
+          <div class="chat-empty-sub">Select a policy from the sidebar, then send a message to test enforcement in real time.</div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <textarea
+          class="chat-input"
+          id="chatInput"
+          placeholder="Send a message…"
+          rows="1"
         ></textarea>
+        <button class="chat-send" id="chatSend" onclick="sendMessage()">↑</button>
       </div>
-    </div>
+    </div><!-- /chat-panel -->
 
-    <div class="card compiled-panel" id="compiledPanel">
-      <div class="card-head">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M4 4l4 4-4 4M9 12h3" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="card-title">Compiled Policy</span>
-        <button class="compiled-toggle" id="compiledToggle" onclick="toggleCompiled()">
-          <span class="chevron">▶</span> View structured rules
-        </button>
-      </div>
-      <div class="compiled-body" id="compiledBody">
-        <pre class="compiled-text" id="compiledText"></pre>
-        <div class="compiled-note" id="compiledNote"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M3 4h10M3 8h7M3 12h5" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <span class="card-title">Test Cases</span>
-        <button class="btn btn-ghost" style="margin-right:8px" onclick="loadDefaults()">Load defaults</button>
-        <button class="btn btn-ghost" onclick="addRow()">+ Add</button>
-      </div>
-      <div class="card-body" style="padding:0">
-        <table class="test-table">
-          <thead>
-            <tr>
-              <th style="padding-left:18px;padding-top:12px;padding-bottom:8px">Prompt</th>
-              <th style="width:90px;padding-top:12px;padding-bottom:8px">Expected</th>
-              <th style="width:40px"></th>
-            </tr>
-          </thead>
-          <tbody id="tcBody">
-            <tr id="emptyRow">
-              <td colspan="3" class="empty">No test cases — load defaults or add your own</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="actions-row">
-      <span id="statusMsg"></span>
-      <button class="btn-enact" id="enactBtn" onclick="enact()">Enact Policy</button>
-    </div>
-
-    <div class="card results-panel" id="resultsPanel">
-      <div class="card-head">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="6" stroke="#aaa" stroke-width="1.5"/>
-          <path d="M5.5 8l1.5 1.5 3.5-3" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="card-title">Enforcement Results</span>
-        <span id="accuracyLabel" style="font-size:11.5px;color:var(--text-3)"></span>
-      </div>
-      <div class="card-body">
-        <div class="summary-stats" id="summaryStats"></div>
-        <div class="acc-bar"><div class="acc-fill" id="accFill" style="width:0%"></div></div>
-        <div id="resultsList"></div>
-      </div>
-    </div>
-
-  </main>
-</div>
+  </div><!-- /work-area -->
+</div><!-- /layout -->
 
 <script>
+// ── State ─────────────────────────────────────────────────────────────────────
 let tcId = 0;
 let active = null;
 let compiledText = '';
+let chatPolicyName = null;
+let chatHistory = [];  // [{role, content}]
+let thinkingId = 0;
 
-addEventListener('DOMContentLoaded', loadPolicies);
+// ── Init ──────────────────────────────────────────────────────────────────────
+addEventListener('DOMContentLoaded', () => {
+  loadPolicies();
+  detectModel();
 
+  const input = document.getElementById('chatInput');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+});
+
+async function detectModel() {
+  try {
+    const { backends, ready } = await api('/api/models');
+    const badge = document.getElementById('modelBadge');
+    if (ready && backends.length) {
+      const b = backends[0];
+      badge.textContent = b.type === 'ollama' ? `ollama / ${b.active}` : b.active;
+    } else {
+      badge.textContent = 'no model — start Ollama or set ANTHROPIC_API_KEY';
+    }
+  } catch (_) {}
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 async function loadPolicies() {
   const { policies } = await api('/api/policies');
   const el = document.getElementById('policyList');
@@ -313,9 +470,7 @@ async function selectPolicy(name) {
 
   if (data.structured) {
     compiledText = data.structured;
-    showCompiledPanel(data.structured, data.description
-      ? 'Previously compiled — enact again to recompile.'
-      : 'This policy was created in structured format.');
+    showCompiledPanel(data.structured, 'Previously compiled — enact again to recompile.');
   } else {
     document.getElementById('compiledPanel').classList.remove('visible');
     compiledText = '';
@@ -325,6 +480,9 @@ async function selectPolicy(name) {
     el.classList.toggle('active', el.textContent.trim() === name));
   document.getElementById('resultsPanel').classList.remove('visible');
   setStatus('');
+
+  // Activate in chat
+  setChatPolicy(name);
 }
 
 function newPolicy() {
@@ -336,6 +494,7 @@ function newPolicy() {
   document.getElementById('resultsPanel').classList.remove('visible');
   document.querySelectorAll('.policy-item').forEach(el => el.classList.remove('active'));
   setStatus('');
+  setChatPolicy(null);
 }
 
 async function savePolicy() {
@@ -344,17 +503,12 @@ async function savePolicy() {
   if (!name) { setStatus('Enter a policy name first'); return; }
   const btn = document.getElementById('saveBtn');
   btn.textContent = 'Saving…';
-  const data = await api('/api/policies', 'POST', {
-    name, description, structured: compiledText || null
-  });
-  if (data.saved) {
-    active = data.name;
-    await loadPolicies();
-    setStatus('Saved ✓');
-  }
+  const data = await api('/api/policies', 'POST', { name, description, structured: compiledText || null });
+  if (data.saved) { active = data.name; await loadPolicies(); setStatus('Saved ✓'); }
   btn.textContent = 'Save';
 }
 
+// ── Test cases ────────────────────────────────────────────────────────────────
 function addRow(prompt = '', expected = 'DENY') {
   const id = ++tcId;
   const er = document.getElementById('emptyRow');
@@ -375,10 +529,9 @@ function addRow(prompt = '', expected = 'DENY') {
 function delRow(id) {
   const row = document.getElementById(`tc-${id}`);
   if (row) row.remove();
-  if (!document.querySelectorAll('.tc-row').length) {
+  if (!document.querySelectorAll('.tc-row').length)
     document.getElementById('tcBody').innerHTML =
       '<tr id="emptyRow"><td colspan="3" class="empty">No test cases — load defaults or add your own</td></tr>';
-  }
 }
 
 function getTestCases() {
@@ -395,11 +548,11 @@ async function loadDefaults() {
   test_cases.forEach(t => addRow(t.prompt, t.expected));
 }
 
+// ── Enact ─────────────────────────────────────────────────────────────────────
 async function enact() {
   const name = document.getElementById('policyName').value.trim() || 'untitled';
   const description = document.getElementById('editor').value.trim();
   const testCases = getTestCases();
-
   if (!description)      { setStatus('Write a policy description first'); return; }
   if (!testCases.length) { setStatus('Add some test cases first'); return; }
 
@@ -410,20 +563,16 @@ async function enact() {
 
   try {
     const data = await api('/api/enact', 'POST', {
-      policy_name: name,
-      description,
-      test_cases: testCases,
-      rmax: 100,
+      policy_name: name, description, test_cases: testCases, rmax: 100,
     });
-
     if (data.structured) {
       compiledText = data.structured;
-      const note = 'Extracted from your policy description using NLP.';
-      showCompiledPanel(data.structured, note);
+      showCompiledPanel(data.structured, 'Extracted from your policy description using NLP.');
     }
-
     renderResults(data);
     await loadPolicies();
+    // Auto-activate the enacted policy in chat
+    setChatPolicy(name);
   } catch (e) {
     setStatus('Error: ' + e.message);
   } finally {
@@ -432,6 +581,7 @@ async function enact() {
   }
 }
 
+// ── Compiled panel ────────────────────────────────────────────────────────────
 function showCompiledPanel(text, note) {
   document.getElementById('compiledText').textContent = text;
   document.getElementById('compiledNote').textContent = note;
@@ -448,46 +598,166 @@ function toggleCompiled() {
   const toggle = document.getElementById('compiledToggle');
   const open   = body.classList.toggle('open');
   toggle.classList.toggle('open', open);
-  toggle.querySelector('.chevron').textContent = open ? '▶' : '▶';
+  toggle.querySelector('.chevron').textContent = '▶';
   toggle.lastChild.textContent = open ? ' Hide structured rules' : ' View structured rules';
 }
 
+// ── Results ───────────────────────────────────────────────────────────────────
 function renderResults({ summary, results }) {
   const panel = document.getElementById('resultsPanel');
   panel.classList.add('visible');
-
-  document.getElementById('accuracyLabel').textContent =
-    `${summary.correct} / ${summary.total} correct`;
-
+  document.getElementById('accuracyLabel').textContent = `${summary.correct} / ${summary.total} correct`;
   const denied  = results.filter(r => r.decision === 'DENY').length;
   const allowed = results.filter(r => r.decision === 'ALLOW').length;
   document.getElementById('summaryStats').innerHTML = `
     <div class="stat"><div class="stat-val">${summary.accuracy}%</div><div class="stat-lbl">Accuracy</div></div>
     <div class="stat"><div class="stat-val">${denied}</div><div class="stat-lbl">Denied</div></div>
     <div class="stat"><div class="stat-val">${allowed}</div><div class="stat-lbl">Allowed</div></div>`;
-
   setTimeout(() => document.getElementById('accFill').style.width = summary.accuracy + '%', 40);
-
-  document.getElementById('resultsList').innerHTML = results.map(r => {
-    return `
-      <div class="result-row">
-        <span class="${r.correct ? 'r-correct' : 'r-wrong'}">${r.correct ? '✓' : '✗'}</span>
-        <span class="r-badge">${r.decision}</span>
-        <span class="r-prompt">${esc(r.prompt)}</span>
-        <span class="r-cats">${esc(r.violations.length ? r.violations.join(', ') : '—')}</span>
-        <div class="priv-bar"><div class="priv-fill" style="width:${r.privilege_pct}%"></div></div>
-        <span class="priv-pct">${r.privilege_pct}%</span>
-      </div>`;
-  }).join('');
-
+  document.getElementById('resultsList').innerHTML = results.map(r => `
+    <div class="result-row">
+      <span class="${r.correct ? 'r-correct' : 'r-wrong'}">${r.correct ? '✓' : '✗'}</span>
+      <span class="r-badge">${r.decision}</span>
+      <span class="r-prompt">${esc(r.prompt)}</span>
+      <span class="r-cats">${esc(r.violations.length ? r.violations.join(', ') : '—')}</span>
+      <div class="priv-bar"><div class="priv-fill" style="width:${r.privilege_pct}%"></div></div>
+      <span class="priv-pct">${r.privilege_pct}%</span>
+    </div>`).join('');
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function setChatPolicy(name) {
+  chatPolicyName = name;
+  chatHistory = [];
+  const label = document.getElementById('chatPolicyName');
+  label.textContent = name ? `Enforcing: ${name}` : 'Select a policy to activate it in chat';
+  label.className   = name ? 'chat-policy-name active' : 'chat-policy-name';
+  // Clear messages
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML = '';
+  if (!name) {
+    msgs.innerHTML = `
+      <div class="chat-empty" id="chatEmpty">
+        <div class="chat-empty-icon">💬</div>
+        <div class="chat-empty-title">Chat with policy enforcement</div>
+        <div class="chat-empty-sub">Select a policy from the sidebar, then send a message to test enforcement in real time.</div>
+      </div>`;
+  } else {
+    msgs.innerHTML = `
+      <div class="chat-empty" id="chatEmpty">
+        <div class="chat-empty-icon">🛡️</div>
+        <div class="chat-empty-title">${esc(name)} is active</div>
+        <div class="chat-empty-sub">Messages will be checked against this policy before reaching the model.</div>
+      </div>`;
+  }
 }
-async function api(url, method='GET', body=null) {
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Remove empty state
+  const empty = document.getElementById('chatEmpty');
+  if (empty) empty.remove();
+
+  appendUserBubble(text);
+
+  const btn = document.getElementById('chatSend');
+  btn.disabled = true;
+  const tid = appendThinkingBubble();
+
+  try {
+    const data = await api('/api/chat', 'POST', {
+      message:     text,
+      policy_name: chatPolicyName,
+      history:     chatHistory,
+    });
+    removeThinking(tid);
+
+    if (data.decision === 'ALLOW') {
+      chatHistory.push({ role: 'user',      content: text });
+      chatHistory.push({ role: 'assistant', content: data.response });
+      // Keep history bounded
+      if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    }
+
+    appendAiBubble(data.response, data.decision, data.violations, data.model);
+  } catch (e) {
+    removeThinking(tid);
+    appendAiBubble('Error: ' + e.message, 'ERROR', [], null);
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+function appendUserBubble(text) {
+  const msgs = document.getElementById('chatMessages');
+  const div  = document.createElement('div');
+  div.className = 'msg msg-user';
+  div.innerHTML = `
+    <div class="msg-bubble">${esc(text)}</div>
+    <div class="msg-meta">You</div>`;
+  msgs.appendChild(div);
+  scrollChat();
+}
+
+function appendThinkingBubble() {
+  const id   = `thinking-${++thinkingId}`;
+  const msgs = document.getElementById('chatMessages');
+  const div  = document.createElement('div');
+  div.className = 'msg msg-ai msg-thinking'; div.id = id;
+  div.innerHTML = `<div class="msg-bubble"><span class="thinking-dots">···</span></div>`;
+  msgs.appendChild(div);
+  scrollChat();
+  return id;
+}
+
+function removeThinking(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function appendAiBubble(text, decision, violations, model) {
+  const msgs    = document.getElementById('chatMessages');
+  const isDeny  = decision === 'DENY';
+  const div     = document.createElement('div');
+  div.className = `msg msg-ai${isDeny ? ' msg-denied' : ''}`;
+
+  let meta = '';
+  if (isDeny) {
+    meta = `<span class="deny-badge">Blocked by policy</span>`;
+    if (violations.length) meta += ` <span style="font-size:10px;color:var(--text-3)">${esc(violations.join(', '))}</span>`;
+  } else if (model && model !== 'none') {
+    meta = `<span style="font-family:var(--mono);font-size:10.5px">${esc(model)}</span>`;
+  }
+
+  div.innerHTML = `
+    <div class="msg-bubble">${esc(text)}</div>
+    ${meta ? `<div class="msg-meta">${meta}</div>` : ''}`;
+  msgs.appendChild(div);
+  scrollChat();
+}
+
+function scrollChat() {
+  const msgs = document.getElementById('chatMessages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function api(url, method = 'GET', body = null) {
   const opts = { method, headers: {} };
   if (body) { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
   const res = await fetch(url, opts);

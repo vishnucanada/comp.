@@ -246,94 +246,6 @@ violated, categories = compiler.<span class="fn">check</span>(user_prompt)
   </div>
 </div>
 
-<section>
-  <div class="section-label">Capabilities</div>
-  <h2>Governance that lives inside the model</h2>
-  <p class="section-sub">
-    Traditional output filters can be bypassed. comp. restructures the model itself
-    so restricted capabilities are mathematically unreachable at low privilege.
-  </p>
-
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">📝</div>
-      <div class="feature-title">Plain English Policies</div>
-      <div class="feature-desc">
-        Write policies the way you'd explain them to a colleague.
-        Those rules are compiled them into structured enforcement rules with keywords,
-        categories, and regex patterns automatically.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🧠</div>
-      <div class="feature-title">Neural Privilege Control</div>
-      <div class="feature-desc">
-        NLPN layers reparameterize weight matrices as nested subspaces.
-        Reducing privilege rank mathematically removes capability to produce undesireable answers not just
-        output. This prevents the ability to use adverserial attacks or prompt injection.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🛡️</div>
-      <div class="feature-title">Audit-Ready Compliance</div>
-      <div class="feature-desc">
-        Every request is logged with privilege level, triggered categories,
-        and GDPR article references. Compliance certificates are generated
-        automatically after training.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <div class="feature-title">Zero-Shot Deployment</div>
-      <div class="feature-desc">
-        Wrap any Hugging Face transformer with a single function call.
-        Supports Llama, Qwen, Mistral, GPT-2, BERT, and more without
-        modifying model architecture.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📊</div>
-      <div class="feature-title">Tiered Severity</div>
-      <div class="feature-desc">
-        GDPR Articles 4, 9, and 10 map to critical (1%), high (5%), and
-        medium (20%) privilege tiers. Deployers tune the exact cutoff per
-        capability via beam-search optimization.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">✅</div>
-      <div class="feature-title">Capability Certificates</div>
-      <div class="feature-desc">
-        Post-training verifier checks suppression and preservation perplexity
-        across all privilege tiers. Outputs a CERTIFIED / PARTIAL / FAILED
-        verdict with exportable JSON report.
-      </div>
-    </div>
-  </div>
-
-  <div class="mae-stack">
-    <div class="mae-layer">
-      <div class="mae-abbr">Translate</div>
-      <div class="mae-name">PolicyTranslator</div>
-      <div class="mae-desc">Plain English → structured DENY/ALLOW rules</div>
-    </div>
-    <div class="mae-layer">
-      <div class="mae-abbr">Monitor</div>
-      <div class="mae-name">PolicyCompiler</div>
-      <div class="mae-desc">Runtime prompt scanner — fires on keyword or regex match</div>
-    </div>
-    <div class="mae-layer">
-      <div class="mae-abbr">Allocate</div>
-      <div class="mae-name">PolicyAllocator</div>
-      <div class="mae-desc">Maps violations to privilege level g ∈ [1, rmax]</div>
-    </div>
-    <div class="mae-layer">
-      <div class="mae-abbr">Enforce</div>
-      <div class="mae-name">NLPNLinear</div>
-      <div class="mae-desc">Weight subspace W(g) = B[:,:g] @ A[:g,:] applied at forward pass</div>
-    </div>
-  </div>
-</section>
 
 <section id="how-it-works" style="padding-top:20px">
   <div class="section-label">How it works</div>
@@ -355,10 +267,10 @@ violated, categories = compiler.<span class="fn">check</span>(user_prompt)
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-content">
-        <div class="step-title">Claude compiles it into structured rules</div>
+        <div class="step-title">We compile it into structured rules</div>
         <div class="step-desc">
-          The translator calls Claude to extract DENY and ALLOW categories with matching keywords
-          and regex patterns. You can inspect the compiled policy in the dashboard before proceeding.
+          Using NLP processing we determine what to DENY and ALLOW with matching keywords.
+          You can inspect the compiled policy in the dashboard before proceeding.
         </div>
         <span class="step-tag">PolicyCompiler</span>
       </div>
@@ -390,18 +302,6 @@ violated, categories = compiler.<span class="fn">check</span>(user_prompt)
   </div>
 </section>
 
-<div class="compliance-strip">
-  <h3>Built for regulated industries</h3>
-  <p>comp. was designed with compliance-first deployment in mind. The audit trail, tiered severity, and certificate system are built to GDPR Article 30 record-keeping standards.</p>
-  <div class="compliance-tags">
-    <span class="c-tag">GDPR Art. 4 — Personal Data</span>
-    <span class="c-tag">GDPR Art. 9 — Special Categories</span>
-    <span class="c-tag">GDPR Art. 10 — Criminal Records</span>
-    <span class="c-tag">HIPAA</span>
-    <span class="c-tag">Enterprise Confidentiality</span>
-    <span class="c-tag">HR Policy Enforcement</span>
-  </div>
-</div>
 
 <div class="cta-section">
   <h2>Start enforcing policies today</h2>
