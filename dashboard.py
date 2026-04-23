@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -52,6 +52,11 @@ class EnactRequest(BaseModel):
     test_cases: List[TestCase]
     low_privilege: int = 1
     rmax: int = 100
+
+
+@app.get("/favicon.png")
+async def favicon():
+    return FileResponse(Path(__file__).parent / "favicon.png", media_type="image/png")
 
 
 @app.get("/", response_class=HTMLResponse)

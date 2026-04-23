@@ -85,11 +85,6 @@ def detect_rmax(
     raise RuntimeError(f"No target layers found. Searched for: {targets}")
 
 
-def nlpn_layers(model: nn.Module) -> list[tuple[str, NLPNLinear]]:
-    """Return all (name, layer) pairs for NLPNLinear layers in model."""
-    return [(n, m) for n, m in model.named_modules() if isinstance(m, NLPNLinear)]
-
-
 def _resolve_parent(root: nn.Module, dotted_name: str) -> tuple[nn.Module, str]:
     parts = dotted_name.split(".")
     parent = root
