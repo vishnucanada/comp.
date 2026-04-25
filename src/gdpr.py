@@ -31,6 +31,8 @@ SEVERITY_PRIVILEGE: dict[str, float] = {
     "medium":   0.20,
 }
 
+_SEVERITY_ORDER = ["critical", "high", "medium"]
+
 
 @dataclass
 class GDPRRule(PolicyRule):
@@ -185,12 +187,10 @@ class GDPRAllocator:
             self._log(text, [], [], "none", rmax, rmax)
             return rmax
 
-        # Use the most restrictive severity among triggered rules
-        severity_order = ["critical", "high", "medium"]
         worst = min(
             triggered,
-            key=lambda r: severity_order.index(r.severity)
-            if r.severity in severity_order else len(severity_order)
+            key=lambda r: _SEVERITY_ORDER.index(r.severity)
+            if r.severity in _SEVERITY_ORDER else len(_SEVERITY_ORDER)
         )
 
         frac = self.severity_privilege.get(worst.severity, 0.05)

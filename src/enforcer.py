@@ -1,4 +1,4 @@
-"""Tg enforcement operator: wrap a model with NLPN layers and control privilege."""
+"""Enforcement operator: wrap a model with NLPN layers and control privilege."""
 import torch.nn as nn
 from .nlpn import NLPNLinear
 

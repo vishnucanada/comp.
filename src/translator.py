@@ -127,14 +127,6 @@ _TAXONOMY: list[dict] = [
     },
 ]
 
-# Single-word detect terms checked with word boundaries (to avoid false matches)
-_SINGLE_WORD_DETECT: dict[str, list[dict]] = {}
-for _cat in _TAXONOMY:
-    for _term in _cat["detect"]:
-        if " " not in _term:
-            _SINGLE_WORD_DETECT.setdefault(_term, []).append(_cat)
-
-
 def _text_has(text: str, term: str) -> bool:
     if " " in term:
         return term in text
