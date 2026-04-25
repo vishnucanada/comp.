@@ -4,7 +4,7 @@ import json
 import re
 import urllib.request as _urllib
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse

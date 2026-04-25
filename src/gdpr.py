@@ -15,11 +15,11 @@ Two additions over the base PolicyAllocator:
 from __future__ import annotations
 import hashlib
 import json
+import re
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 import torch
-from .policy import Policy, PolicyRule, PolicyCompiler, _parse
 from .enforcer import set_privilege, get_rmax
 
 
@@ -106,7 +106,6 @@ class GDPRPolicyParser:
 
     @staticmethod
     def parse(text: str) -> tuple[list[GDPRRule], str]:
-        import re as _re
         name = "GDPR Policy"
         rules: list[GDPRRule] = []
         current: GDPRRule | None = None
@@ -153,7 +152,6 @@ class GDPRPolicyParser:
                 current.keywords.extend(k for k in kws if k)
 
             elif current and line.lower().startswith("regex:"):
-                import re
                 pattern_str = line.split(":", 1)[1].strip()
                 try:
                     current.patterns.append(re.compile(pattern_str))
@@ -228,7 +226,6 @@ class GDPRAllocator:
         rmax: int | None = None,
         **generate_kwargs,
     ) -> tuple[torch.Tensor, int]:
-        from .enforcer import get_rmax
         if rmax is None:
             rmax = get_rmax(model)
         g = self.allocate(model, input_ids, rmax)

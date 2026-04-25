@@ -1,5 +1,4 @@
 """Tg enforcement operator: wrap a model with NLPN layers and control privilege."""
-from typing import Optional
 import torch.nn as nn
 from .nlpn import NLPNLinear
 
@@ -16,7 +15,7 @@ _DEFAULT_TARGET_MODULES = [
 def wrap_with_nlpn(
     model: nn.Module,
     rmax: int,
-    target_modules: Optional[list[str]] = None,
+    target_modules: list[str] | None = None,
 ) -> nn.Module:
     """
     Replace matching nn.Linear layers with NLPNLinear layers (the enforcer Tg).
@@ -69,7 +68,7 @@ def get_rmax(model: nn.Module) -> int:
 
 def detect_rmax(
     model: nn.Module,
-    target_modules: Optional[list[str]] = None,
+    target_modules: list[str] | None = None,
 ) -> int:
     """
     Return the appropriate rmax for this model: min(dout, din) of the first
