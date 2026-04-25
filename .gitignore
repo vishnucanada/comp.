@@ -1,3 +1,4 @@
 comp./
 *.pyc
 __pycache__/
+*.claude

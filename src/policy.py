@@ -73,6 +73,17 @@ class Policy:
     def from_text(cls, text: str) -> "Policy":
         return _parse(text)
 
+    def to_text(self) -> str:
+        lines = [f"name: {self.name}", ""]
+        for rule in self.rules:
+            lines.append(f"{rule.action}: {rule.category}")
+            if rule.keywords:
+                lines.append(f"  match: {', '.join(rule.keywords)}")
+            for pat in rule.patterns:
+                lines.append(f"  regex: {pat.pattern}")
+            lines.append("")
+        return "\n".join(lines).strip()
+
     def summary(self) -> str:
         lines = [f"Policy: {self.name}"]
         for r in self.rules:
@@ -182,10 +193,6 @@ class PolicyAllocator:
         rmax: int | None = None,
         **generate_kwargs,
     ) -> tuple[torch.Tensor, int]:
-        """
-        Generate tokens under policy-controlled privilege.
-        Returns (output_ids, privilege_used).
-        """
         from .enforcer import set_privilege, get_rmax
 
         if rmax is None:

@@ -17,9 +17,10 @@ import hashlib
 import json
 import re
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 import torch
+from .policy import PolicyRule
 from .enforcer import set_privilege, get_rmax
 
 
@@ -32,22 +33,10 @@ SEVERITY_PRIVILEGE: dict[str, float] = {
 
 
 @dataclass
-class GDPRRule:
+class GDPRRule(PolicyRule):
     """PolicyRule extended with GDPR article number and severity."""
-    action: str
-    category: str
-    article: int | None
-    severity: str          # critical | high | medium | none
-    keywords: list[str] = field(default_factory=list)
-    patterns: list = field(default_factory=list)
-
-    def matches(self, text: str) -> bool:
-        text_lower = text.lower()
-        if any(kw in text_lower for kw in self.keywords):
-            return True
-        if any(p.search(text) for p in self.patterns):
-            return True
-        return False
+    article: int | None = None
+    severity: str = "high"  # critical | high | medium | none
 
 
 @dataclass

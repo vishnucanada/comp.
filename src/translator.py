@@ -223,15 +223,7 @@ class PolicyTranslator:
         policy = self.translate(text)
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        lines = [f"name: {policy.name}", ""]
-        for rule in policy.rules:
-            lines.append(f"{rule.action}: {rule.category}")
-            if rule.keywords:
-                lines.append(f"  match: {', '.join(rule.keywords)}")
-            for pat in rule.patterns:
-                lines.append(f"  regex: {pat.pattern}")
-            lines.append("")
-        path.write_text("\n".join(lines))
+        path.write_text(policy.to_text())
         return policy
 
 

@@ -7,12 +7,13 @@ Indirect / pseudonymised data                                      → 20% of rm
 Permitted (job titles, public info, technical docs)                → 100% of rmax
 """
 import torch
+from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import src
 from src.gdpr import GDPRPolicyParser
 
 MODEL_ID    = "Qwen/Qwen2.5-0.5B"
-POLICY_FILE = "policies/gdpr.txt"
+POLICY_FILE = Path("policies/gdpr.txt")
 MAX_NEW_TOKENS = 25
 
 PROMPTS = [
@@ -39,7 +40,7 @@ def main():
     print(f"Device: {device}\n")
 
     # --- Parse GDPR policy ---
-    policy_text = open(POLICY_FILE).read()
+    policy_text = POLICY_FILE.read_text()
     rules, policy_name = GDPRPolicyParser.parse(policy_text)
     deny_rules = [r for r in rules if r.action == "DENY"]
     print(f"Policy: {policy_name}")

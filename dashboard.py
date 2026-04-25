@@ -4,15 +4,14 @@ import json
 import re
 import urllib.request as _urllib
 from pathlib import Path
-from typing import Optional
-
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-from policy import Policy, PolicyCompiler
+sys.path.insert(0, str(Path(__file__).parent))
+from src.policy import Policy, PolicyCompiler
+from src.translator import PolicyTranslator
 
 app = FastAPI(title="comp. Admin Dashboard")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -27,18 +26,6 @@ def sanitize(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "", name)
 
 
-def policy_to_text(policy) -> str:
-    lines = [f"name: {policy.name}", ""]
-    for rule in policy.rules:
-        lines.append(f"{rule.action}: {rule.category}")
-        if rule.keywords:
-            lines.append(f"  match: {', '.join(rule.keywords)}")
-        for pat in rule.patterns:
-            lines.append(f"  regex: {pat.pattern}")
-        lines.append("")
-    return "\n".join(lines).strip()
-
-
 def _load_policy(name: str) -> Policy | None:
     safe = sanitize(name)
     txt  = POLICIES_DIR / f"{safe}.txt"
@@ -49,7 +36,6 @@ def _load_policy(name: str) -> Policy | None:
         try:
             desc = json.loads(meta.read_text()).get("description", "")
             if desc:
-                from translator import PolicyTranslator
                 return PolicyTranslator().translate(desc)
         except Exception:
             pass
@@ -129,7 +115,7 @@ def _get_response(message: str, history: list[dict]) -> tuple[str, str]:
 class PolicySaveRequest(BaseModel):
     name: str
     description: str
-    structured: Optional[str] = None
+    structured: str | None = None
 
 class TestCase(BaseModel):
     prompt: str
@@ -148,7 +134,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    policy_name: Optional[str] = None
+    policy_name: str | None = None
     history: list[ChatMessage] = []
 
 
@@ -232,9 +218,8 @@ async def delete_policy(name: str):
 async def enact_policy(req: EnactRequest):
     structured_text = None
     try:
-        from translator import PolicyTranslator
         policy = PolicyTranslator().translate(req.description)
-        structured_text = policy_to_text(policy)
+        structured_text = policy.to_text()
     except Exception as e:
         raise HTTPException(500, f"Translation error: {e}")
 
