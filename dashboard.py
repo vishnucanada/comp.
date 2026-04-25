@@ -138,7 +138,7 @@ class TestCase(BaseModel):
 class EnactRequest(BaseModel):
     policy_name: str
     description: str
-    test_cases: List[TestCase]
+    test_cases: list[TestCase]
     low_privilege: int = 1
     rmax: int = 100
 
@@ -149,7 +149,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     policy_name: Optional[str] = None
-    history: List[ChatMessage] = []
+    history: list[ChatMessage] = []
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
