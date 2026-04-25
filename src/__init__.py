@@ -14,6 +14,7 @@ from .enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax
 from .policy import Policy, PolicyCompiler, PolicyAllocator
 from .translator import PolicyTranslator
 from .gdpr import GDPRAllocator, GDPRPolicyParser, AuditLog
+from .train import train_nlpn, build_deny_examples, TrainConfig
 
 __all__ = [
     "NLPNLinear",
@@ -21,4 +22,5 @@ __all__ = [
     "Policy", "PolicyCompiler", "PolicyAllocator",
     "PolicyTranslator",
     "GDPRAllocator", "GDPRPolicyParser", "AuditLog",
+    "train_nlpn", "build_deny_examples", "TrainConfig",
 ]
