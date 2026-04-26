@@ -1,4 +1,12 @@
+# core
 torch>=2.0
 transformers>=4.40
 anthropic>=0.25
+
+# dashboard
+fastapi>=0.100
+uvicorn>=0.23
+pydantic>=2.0
+
+# dev / test
 pytest>=8.0

@@ -7,14 +7,26 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent))
 from src.policy import Policy, PolicyCompiler
 from src.translator import PolicyTranslator
 
+# ── Config constants ──────────────────────────────────────────────────────────
+OLLAMA_BASE_URL   = "http://localhost:11434"
+OLLAMA_PREFERRED  = "qwen2.5:0.5b"
+ANTHROPIC_MODEL   = "claude-haiku-4-5-20251001"
+ANTHROPIC_MAX_TOK = 1024
+ALLOWED_ORIGINS   = os.environ.get("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
+
 app = FastAPI(title="comp. Admin Dashboard")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 POLICIES_DIR = Path(__file__).parent / "policies"
 POLICIES_DIR.mkdir(exist_ok=True)

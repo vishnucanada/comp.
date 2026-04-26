@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "comp"
+version = "0.1.0"
+description = "Nested Least-Privilege Networks — layer-level capability suppression for LLMs"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "anthropic>=0.25",
+]
+
+[project.optional-dependencies]
+dashboard = [
+    "fastapi>=0.100",
+    "uvicorn>=0.23",
+    "pydantic>=2.0",
+]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
