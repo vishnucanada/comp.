@@ -9,11 +9,11 @@ No GPU required. Runs on CPU or Apple Silicon MPS.
 Expected time: 3-8 minutes on an M-series Mac for Qwen2.5-0.5B.
 """
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import src
 from src.train import TrainConfig
+from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 
-MODEL_ID    = "Qwen/Qwen2.5-0.5B"
+MODEL_ID    = DEFAULT_MODEL_ID
 POLICY_FILE = "policies/legal_compliance.txt"
 MAX_NEW_TOKENS = 20
 
@@ -57,11 +57,7 @@ def evaluate(label: str, model, tokenizer, rmax: int, low_g: int, device):
 
 
 def main():
-    device = (
-        torch.device("mps") if torch.backends.mps.is_available()
-        else torch.device("cuda") if torch.cuda.is_available()
-        else torch.device("cpu")
-    )
+    device = get_device()
     print(f"Device: {device}\n")
 
     policy = src.Policy.from_file(POLICY_FILE)
@@ -69,10 +65,7 @@ def main():
     print()
 
     print(f"Loading {MODEL_ID}...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, torch_dtype=torch.float32)
-    model.eval().to(device)
+    model, tokenizer = load_model(MODEL_ID, device)
 
     rmax = src.detect_rmax(model)
     src.wrap_with_nlpn(model, rmax=rmax)
@@ -80,17 +73,14 @@ def main():
     low_g = max(1, rmax // 20)
     print(f"rmax={rmax}  low_g={low_g}\n")
 
-    # ── Before training ───────────────────────────────────────────────────────
     evaluate("BEFORE training", model, tokenizer, rmax, low_g, device)
 
-    # ── Train ─────────────────────────────────────────────────────────────────
     print(f"\n{'='*60}")
     print("  Training")
     print(f"{'='*60}")
     config = TrainConfig(epochs=3, lr=1e-4, max_seq_len=64, log_every=20)
     src.train_nlpn(model, tokenizer, policy, config=config)
 
-    # ── After training ────────────────────────────────────────────────────────
     evaluate("AFTER training", model, tokenizer, rmax, low_g, device)
 
     print(f"\n{'='*60}")

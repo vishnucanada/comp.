@@ -14,6 +14,7 @@ Two additions over the base PolicyAllocator:
 """
 from __future__ import annotations
 import hashlib
+import hmac as _hmac
 import json
 import re
 import time
@@ -60,17 +61,48 @@ class AuditLog:
     """
     Article 30 audit log — records of processing activities.
     Stores prompt hashes, not raw prompts, to comply with data minimisation.
+
+    Args:
+        path:        Path to the JSONL audit file.
+        max_entries: Rotate (archive) the log file when this many entries
+                     are reached. None = never rotate.
+        hmac_key:    Optional bytes key. When provided, each written row
+                     includes an ``_hmac`` field (HMAC-SHA256 of the row)
+                     so tamper-evident verification is possible.
     """
 
-    def __init__(self, path: str | Path = "audit/gdpr_audit.jsonl"):
+    def __init__(
+        self,
+        path: str | Path = "audit/gdpr_audit.jsonl",
+        max_entries: int | None = None,
+        hmac_key: bytes | None = None,
+    ):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.max_entries = max_entries
+        self._hmac_key = hmac_key
         self._entries: list[AuditEntry] = []
 
+    def _sign(self, row: dict) -> str:
+        msg = json.dumps(row, sort_keys=True).encode()
+        return _hmac.new(self._hmac_key, msg, "sha256").hexdigest()
+
+    def _rotate(self) -> None:
+        """Archive the current log file and start a new one."""
+        ts = time.strftime("%Y%m%dT%H%M%S")
+        archive = self.path.with_name(f"{self.path.stem}_{ts}{self.path.suffix}")
+        self.path.rename(archive)
+        self._entries.clear()
+
     def record(self, entry: AuditEntry) -> None:
+        if self.max_entries and len(self._entries) >= self.max_entries:
+            self._rotate()
         self._entries.append(entry)
+        row = asdict(entry)
+        if self._hmac_key:
+            row["_hmac"] = self._sign(row)
         with self.path.open("a") as f:
-            f.write(json.dumps(asdict(entry)) + "\n")
+            f.write(json.dumps(row) + "\n")
 
     def summary(self) -> str:
         if not self._entries:
@@ -237,7 +269,7 @@ class GDPRAllocator:
         g: int,
         rmax: int,
     ) -> None:
-        prompt_hash = hashlib.sha256(text.encode()).hexdigest()[:16]
+        prompt_hash = hashlib.sha256(text.encode()).hexdigest()
         self.audit_log.record(AuditEntry(
             timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
             prompt_hash=prompt_hash,

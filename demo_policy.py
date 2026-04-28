@@ -7,10 +7,10 @@ Otherwise falls back to loading POLICY_FILE directly.
 """
 import os
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import src
+from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 
-MODEL_ID    = "Qwen/Qwen2.5-0.5B"
+MODEL_ID    = DEFAULT_MODEL_ID
 POLICY_FILE = "policies/legal_compliance.txt"
 MAX_NEW_TOKENS   = 30
 LOW_PRIVILEGE_FRAC = 0.1
@@ -61,17 +61,14 @@ def load_policy() -> src.Policy:
 
 
 def main():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = get_device()
     print(f"Device: {device}\n")
 
-    policy    = load_policy()
-    compiler  = src.PolicyCompiler(policy)
+    policy   = load_policy()
+    compiler = src.PolicyCompiler(policy)
 
     print(f"Loading {MODEL_ID}...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float32)
-    model.eval().to(device)
+    model, tokenizer = load_model(MODEL_ID, device)
 
     rmax  = src.detect_rmax(model)
     low_g = max(1, int(rmax * LOW_PRIVILEGE_FRAC))

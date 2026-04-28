@@ -1,4 +1,12 @@
-"""Enforcement operator: wrap a model with NLPN layers and control privilege."""
+"""Enforcement operator: wrap a model with NLPN layers and control privilege.
+
+SECURITY NOTE — attention heads are NOT wrapped.
+Only MLP projections are replaced with NLPNLinear. Attention Q/K/V/O projections
+remain at full rank at all privilege levels. A crafted prompt could in principle
+exploit the unwrapped attention path to partially bypass suppression. Pass
+target_modules= with attention layer names (e.g. "q_proj", "v_proj") to extend
+coverage, or treat this as a defence-in-depth layer rather than a sole control.
+"""
 import torch.nn as nn
 from .nlpn import NLPNLinear
 

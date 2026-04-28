@@ -6,13 +6,12 @@ Standard personal data (names, emails, addresses)                  → 5% of rma
 Indirect / pseudonymised data                                      → 20% of rmax
 Permitted (job titles, public info, technical docs)                → 100% of rmax
 """
-import torch
-from pathlib import Path
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import src
+from pathlib import Path
 from src.gdpr import GDPRPolicyParser
+from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 
-MODEL_ID    = "Qwen/Qwen2.5-0.5B"
+MODEL_ID    = DEFAULT_MODEL_ID
 POLICY_FILE = Path("policies/gdpr.txt")
 MAX_NEW_TOKENS = 25
 
@@ -36,10 +35,9 @@ PROMPTS = [
 
 
 def main():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = get_device()
     print(f"Device: {device}\n")
 
-    # --- Parse GDPR policy ---
     policy_text = POLICY_FILE.read_text()
     rules, policy_name = GDPRPolicyParser.parse(policy_text)
     deny_rules = [r for r in rules if r.action == "DENY"]
@@ -50,12 +48,8 @@ def main():
           f"{sum(1 for r in deny_rules if r.severity=='medium')} medium)")
     print()
 
-    # --- Load model ---
     print(f"Loading {MODEL_ID}...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float32)
-    model.eval().to(device)
+    model, tokenizer = load_model(MODEL_ID, device)
 
     rmax = src.detect_rmax(model)
     src.wrap_with_nlpn(model, rmax=rmax)

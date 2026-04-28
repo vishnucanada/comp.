@@ -58,14 +58,13 @@ def _load_policy(name: str) -> Policy | None:
 
 def _ollama_model() -> str | None:
     """Return the best available Ollama model name, or None if Ollama isn't running."""
-    preferred = "qwen2.5:0.5b"
     try:
-        req = _urllib.Request("http://localhost:11434/api/tags")
+        req = _urllib.Request(f"{OLLAMA_BASE_URL}/api/tags")
         with _urllib.urlopen(req, timeout=3) as r:
             models = [m["name"] for m in json.loads(r.read()).get("models", [])]
         if not models:
             return None
-        return preferred if preferred in models else models[0]
+        return OLLAMA_PREFERRED if OLLAMA_PREFERRED in models else models[0]
     except Exception:
         return None
 
@@ -81,7 +80,7 @@ def _ollama_chat(message: str, history: list[dict]) -> tuple[str, str] | None:
             "stream": False,
         }).encode()
         req = _urllib.Request(
-            "http://localhost:11434/api/chat",
+            f"{OLLAMA_BASE_URL}/api/chat",
             data=body,
             headers={"Content-Type": "application/json"},
         )
@@ -100,11 +99,11 @@ def _anthropic_chat(message: str, history: list[dict]) -> tuple[str, str] | None
         client = anthropic.Anthropic(api_key=key)
         msgs = history + [{"role": "user", "content": message}]
         resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            model=ANTHROPIC_MODEL,
+            max_tokens=ANTHROPIC_MAX_TOK,
             messages=msgs,
         )
-        return resp.content[0].text, "claude-haiku-4-5"
+        return resp.content[0].text, ANTHROPIC_MODEL
     except Exception:
         return None
 
@@ -125,27 +124,27 @@ def _get_response(message: str, history: list[dict]) -> tuple[str, str]:
 # ── Models ───────────────────────────────────────────────────────────────────
 
 class PolicySaveRequest(BaseModel):
-    name: str
-    description: str
-    structured: str | None = None
+    name: str = Field(..., max_length=64)
+    description: str = Field(..., max_length=4096)
+    structured: str | None = Field(None, max_length=16384)
 
 class TestCase(BaseModel):
-    prompt: str
+    prompt: str = Field(..., max_length=2048)
     expected: str
 
 class EnactRequest(BaseModel):
     policy_name: str
-    description: str
+    description: str = Field(..., max_length=4096)
     test_cases: list[TestCase]
     low_privilege: int = 1
     rmax: int = 100
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str = Field(..., max_length=4096)
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=4096)
     policy_name: str | None = None
     history: list[ChatMessage] = []
 
@@ -188,8 +187,11 @@ async def list_policies():
 
 @app.get("/api/policies/{name}")
 async def get_policy(name: str):
-    txt  = POLICIES_DIR / f"{name}.txt"
-    meta = POLICIES_DIR / f"{name}.json"
+    safe = sanitize(name)
+    if not safe:
+        raise HTTPException(400, "Invalid policy name")
+    txt  = POLICIES_DIR / f"{safe}.txt"
+    meta = POLICIES_DIR / f"{safe}.json"
     if not txt.exists() and not meta.exists():
         raise HTTPException(404, "Policy not found")
     structured  = txt.read_text() if txt.exists() else ""
@@ -199,7 +201,7 @@ async def get_policy(name: str):
             description = json.loads(meta.read_text()).get("description", "")
         except Exception:
             pass
-    return {"name": name, "description": description, "structured": structured}
+    return {"name": safe, "description": description, "structured": structured}
 
 
 @app.post("/api/policies")
@@ -215,9 +217,12 @@ async def save_policy(req: PolicySaveRequest):
 
 @app.delete("/api/policies/{name}")
 async def delete_policy(name: str):
+    safe = sanitize(name)
+    if not safe:
+        raise HTTPException(400, "Invalid policy name")
     deleted = False
     for ext in (".txt", ".json"):
-        p = POLICIES_DIR / f"{name}{ext}"
+        p = POLICIES_DIR / f"{safe}{ext}"
         if p.exists():
             p.unlink()
             deleted = True

@@ -80,7 +80,8 @@ def _tokenize_pair(
 ) -> tuple[torch.Tensor, torch.Tensor] | None:
     """Return (input_ids, labels) with prompt tokens masked in labels (-100)."""
     p_ids = tokenizer(prompt, add_special_tokens=True)["input_ids"]
-    r_ids = tokenizer(response + tokenizer.eos_token, add_special_tokens=False)["input_ids"]
+    eos = tokenizer.eos_token or ""
+    r_ids = tokenizer(response + eos, add_special_tokens=False)["input_ids"]
     ids = (p_ids + r_ids)[:max_len]
     labels = ([-100] * len(p_ids) + r_ids)[:max_len]
     if all(l == -100 for l in labels):
