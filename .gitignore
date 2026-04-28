@@ -2,3 +2,15 @@ comp./
 *.pyc
 __pycache__/
 *.claude
+
+# Saved NLPN checkpoints (A/B weight files can be large)
+nlpn_checkpoints/
+*.pt
+*.bin
+*.safetensors
+
+# GDPR audit logs (may contain sensitive hashes)
+audit/
+
+# Environment variables
+.env

@@ -10,7 +10,7 @@ Allocator  →  PolicyAllocator           (signals → privilege g)
 Enforcer   →  wrap_with_nlpn            (g → rank-restricted forward pass)
 """
 from .nlpn import NLPNLinear
-from .enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax
+from .enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax, save_nlpn, load_nlpn
 from .policy import Policy, PolicyCompiler, PolicyAllocator
 from .translator import PolicyTranslator
 from .gdpr import GDPRAllocator, GDPRPolicyParser, AuditLog
@@ -18,7 +18,7 @@ from .train import train_nlpn, build_deny_examples, TrainConfig
 
 __all__ = [
     "NLPNLinear",
-    "wrap_with_nlpn", "set_privilege", "get_rmax", "detect_rmax",
+    "wrap_with_nlpn", "set_privilege", "get_rmax", "detect_rmax", "save_nlpn", "load_nlpn",
     "Policy", "PolicyCompiler", "PolicyAllocator",
     "PolicyTranslator",
     "GDPRAllocator", "GDPRPolicyParser", "AuditLog",
