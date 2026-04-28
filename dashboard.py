@@ -40,6 +40,8 @@ def sanitize(name: str) -> str:
 
 def _load_policy(name: str) -> Policy | None:
     safe = sanitize(name)
+    if not safe:
+        return None
     txt  = POLICIES_DIR / f"{safe}.txt"
     meta = POLICIES_DIR / f"{safe}.json"
     if txt.exists():
@@ -114,9 +116,9 @@ def _get_response(message: str, history: list[dict]) -> tuple[str, str]:
         if result:
             return result
     return (
-        "No LLM backend detected. "
-        "Run `ollama pull qwen2.5:0.5b && ollama serve`, "
-        "or set the ANTHROPIC_API_KEY environment variable.",
+        f"No LLM backend detected. "
+        f"Run `ollama pull {OLLAMA_PREFERRED} && ollama serve`, "
+        f"or set the ANTHROPIC_API_KEY environment variable.",
         "none",
     )
 
@@ -133,7 +135,7 @@ class TestCase(BaseModel):
     expected: str
 
 class EnactRequest(BaseModel):
-    policy_name: str
+    policy_name: str = Field(..., max_length=64)
     description: str = Field(..., max_length=4096)
     test_cases: list[TestCase]
     low_privilege: int = 1
@@ -145,7 +147,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., max_length=4096)
-    policy_name: str | None = None
+    policy_name: str | None = Field(None, max_length=64)
     history: list[ChatMessage] = []
 
 
@@ -171,7 +173,7 @@ async def list_models():
     if model:
         backends.append({"type": "ollama", "active": model})
     if os.environ.get("ANTHROPIC_API_KEY"):
-        backends.append({"type": "anthropic", "active": "claude-haiku-4-5"})
+        backends.append({"type": "anthropic", "active": ANTHROPIC_MODEL})
     return {"backends": backends, "ready": bool(backends)}
 
 
