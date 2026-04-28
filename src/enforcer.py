@@ -60,11 +60,46 @@ def wrap_with_nlpn(
     return model
 
 
-def set_privilege(model: nn.Module, g: int) -> None:
-    """Set privilege level g on every NLPNLinear in the model."""
-    for module in model.modules():
-        if isinstance(module, NLPNLinear):
-            module.privilege = g
+def set_privilege(model: nn.Module, g: int | dict[str, int]) -> None:
+    """Set privilege level on NLPNLinear layers.
+
+    Args:
+        g: A single int applied to all layers, **or** a dict mapping layer-name
+           substrings to privilege levels.  Exact name matches take priority;
+           unmatched layers keep their current privilege.
+
+    Examples::
+
+        set_privilege(model, 4)                          # all layers → 4
+        set_privilege(model, {"q_proj": 2, "down_proj": 6})  # per-component
+    """
+    if isinstance(g, int):
+        for module in model.modules():
+            if isinstance(module, NLPNLinear):
+                module.privilege = g
+        return
+
+    for name, module in model.named_modules():
+        if not isinstance(module, NLPNLinear):
+            continue
+        # Exact match first, then substring
+        new_g = g.get(name)
+        if new_g is None:
+            for key, val in g.items():
+                if key in name:
+                    new_g = val
+                    break
+        if new_g is not None:
+            module.privilege = new_g
+
+
+def get_privilege_map(model: nn.Module) -> dict[str, int]:
+    """Return {layer_name: current_privilege} for every NLPNLinear in the model."""
+    return {
+        name: module.privilege
+        for name, module in model.named_modules()
+        if isinstance(module, NLPNLinear)
+    }
 
 
 def get_rmax(model: nn.Module) -> int:

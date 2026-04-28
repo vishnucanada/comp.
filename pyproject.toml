@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "comp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Nested Least-Privilege Networks — layer-level capability suppression for LLMs"
 requires-python = ">=3.10"
 dependencies = [
@@ -13,6 +13,9 @@ dependencies = [
     "anthropic>=0.25",
 ]
 
+[project.scripts]
+comp = "src.cli:main"
+
 [project.optional-dependencies]
 dashboard = [
     "fastapi>=0.100",
@@ -20,8 +23,18 @@ dashboard = [
     "pydantic>=2.0",
     "slowapi>=0.1.9",
 ]
+semantic = [
+    "sentence-transformers>=2.7",
+]
+quantize = [
+    "bitsandbytes>=0.41",
+    "accelerate>=0.27",
+]
 dev = [
     "pytest>=8.0",
+]
+all = [
+    "comp[dashboard,semantic,quantize]",
 ]
 
 [tool.setuptools.packages.find]

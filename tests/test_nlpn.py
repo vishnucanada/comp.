@@ -111,3 +111,48 @@ def test_nested_structure():
         ranks.append(rank)
     # ranks must be non-decreasing
     assert all(ranks[i] <= ranks[i + 1] for i in range(len(ranks) - 1))
+
+
+# ── W(g) eval cache ───────────────────────────────────────────────────────────
+
+def test_cache_populated_in_eval():
+    layer = NLPNLinear.from_linear(_make_linear(), rmax=4)
+    layer.eval()
+    x = torch.randn(1, 8)
+    layer(x)
+    assert layer._W_cache is not None
+    assert layer._W_cache_g == layer.privilege
+
+def test_cache_not_populated_in_train():
+    layer = NLPNLinear.from_linear(_make_linear(), rmax=4)
+    layer.train()
+    x = torch.randn(1, 8)
+    layer(x)
+    assert layer._W_cache is None
+
+def test_cache_invalidated_on_privilege_change():
+    layer = NLPNLinear.from_linear(_make_linear(), rmax=4)
+    layer.eval()
+    x = torch.randn(1, 8)
+    layer(x)
+    assert layer._W_cache is not None
+    layer.privilege = 2
+    assert layer._W_cache is None
+
+def test_cache_gives_same_output():
+    layer = NLPNLinear.from_linear(_make_linear(), rmax=4)
+    layer.eval()
+    x = torch.randn(3, 8)
+    out1 = layer(x).detach().clone()
+    out2 = layer(x).detach().clone()   # should use cache
+    assert torch.allclose(out1, out2)
+
+def test_cache_recomputes_after_privilege_change():
+    layer = NLPNLinear.from_linear(_make_linear(din=8, dout=8), rmax=8)
+    layer.eval()
+    x = torch.randn(1, 8)
+    layer.privilege = 8
+    out_full = layer(x).detach().clone()
+    layer.privilege = 1
+    out_low  = layer(x).detach().clone()
+    assert not torch.allclose(out_full, out_low)

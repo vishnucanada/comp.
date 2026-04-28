@@ -166,6 +166,95 @@ class _ModelRegistry:
 _registry = _ModelRegistry()
 
 
+# ── Training Registry ─────────────────────────────────────────────────────────
+
+class _TrainingRegistry:
+    """Manage background training jobs with live SSE progress streaming."""
+
+    def __init__(self):
+        self._lock:   Lock                       = Lock()
+        self._status: dict[str, str]             = {}
+        self._queues: dict[str, queue.Queue]     = {}
+
+    def status(self, name: str) -> str:
+        return self._status.get(name, "not_started")
+
+    def all_status(self) -> dict[str, str]:
+        return dict(self._status)
+
+    def stream_queue(self, name: str) -> queue.Queue | None:
+        return self._queues.get(name)
+
+    def train_async(self, name: str, config: dict) -> None:
+        with self._lock:
+            if self._status.get(name) == "training":
+                return
+            self._status[name] = "training"
+            self._queues[name] = queue.Queue()
+        Thread(target=self._train, args=(name, config), daemon=True).start()
+
+    def _train(self, name: str, config: dict) -> None:
+        q = self._queues[name]
+        try:
+            from src.utils import load_model
+            from src.enforcer import wrap_with_nlpn, detect_rmax
+            from src.train import TrainConfig, build_deny_examples, build_adversarial_examples
+            import src
+
+            policy = _load_policy(name)
+            if policy is None:
+                raise ValueError(f"Policy '{name}' not found")
+
+            model_id = config.get("model_id", "Qwen/Qwen2.5-0.5B")
+            ckpt     = CHECKPOINTS_DIR / name
+            if ckpt.exists():
+                try:
+                    saved_id = json.loads((ckpt / "nlpn_config.json").read_text()).get("model_id")
+                    if saved_id:
+                        model_id = saved_id
+                except Exception:
+                    pass
+
+            q.put({"type": "status", "message": f"Loading {model_id} ..."})
+            model, tokenizer = load_model(model_id)
+            rmax = detect_rmax(model)
+            wrap_with_nlpn(model, rmax=rmax)
+
+            train_cfg = TrainConfig(
+                epochs=config.get("epochs", 3),
+                lr=config.get("lr", 1e-4),
+                orth_reg=config.get("orth_reg", 0.0),
+            )
+
+            deny_ex = build_deny_examples(policy)
+            if config.get("adversarial"):
+                deny_ex += build_adversarial_examples(policy)
+
+            def on_step(epoch, step, loss):
+                q.put({"type": "progress", "epoch": epoch, "step": step, "loss": round(loss, 4)})
+
+            q.put({"type": "status", "message": "Training started ..."})
+            src.train_nlpn(model, tokenizer, policy, config=train_cfg,
+                           deny_examples=deny_ex, on_step=on_step)
+
+            q.put({"type": "status", "message": "Saving checkpoint ..."})
+            CHECKPOINTS_DIR.mkdir(exist_ok=True)
+            src.save_nlpn(model, ckpt, model_id=model_id)
+
+            with self._lock:
+                self._status[name] = "done"
+            q.put({"type": "done", "checkpoint": str(ckpt)})
+        except Exception as e:
+            with self._lock:
+                self._status[name] = f"error:{e}"
+            q.put({"type": "error", "message": str(e)})
+        finally:
+            q.put(None)
+
+
+_train_registry = _TrainingRegistry()
+
+
 # ── LLM backends ──────────────────────────────────────────────────────────────
 
 def _ollama_model() -> str | None:
@@ -320,6 +409,13 @@ class StreamChatRequest(BaseModel):
     message:     str               = Field(..., max_length=4096)
     policy_name: str | None        = Field(None, max_length=64)
     history:     list[ChatMessage] = []
+
+class TrainRequest(BaseModel):
+    model_id:    str   = "Qwen/Qwen2.5-0.5B"
+    epochs:      int   = Field(3, ge=1, le=20)
+    lr:          float = Field(1e-4, gt=0)
+    orth_reg:    float = Field(0.0, ge=0)
+    adversarial: bool  = False
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -605,6 +701,56 @@ async def chat_stream(request: Request, req: StreamChatRequest):
         )
         yield f"data: {json.dumps({'type': 'chunk', 'text': msg})}\n\n"
         yield f"data: {json.dumps({'type': 'done', 'model': 'none'})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ── Training routes ───────────────────────────────────────────────────────────
+
+@app.post("/api/train/{name}")
+async def start_training(name: str, req: TrainRequest, _auth=Depends(_require_auth)):
+    safe = _safe_name(name)
+    if _load_policy(safe) is None:
+        raise HTTPException(404, f"Policy '{safe}' not found")
+    _train_registry.train_async(safe, {
+        "model_id":    req.model_id,
+        "epochs":      req.epochs,
+        "lr":          req.lr,
+        "orth_reg":    req.orth_reg,
+        "adversarial": req.adversarial,
+    })
+    return {"status": "training", "name": safe}
+
+
+@app.get("/api/train/status")
+async def training_status():
+    return {"jobs": _train_registry.all_status()}
+
+
+@app.get("/api/train/{name}/stream")
+async def training_stream(name: str):
+    safe   = _safe_name(name)
+    status = _train_registry.status(safe)
+
+    if status == "not_started":
+        raise HTTPException(404, f"No training job for '{safe}'")
+
+    async def event_generator():
+        # If the job is already finished, return a single terminal event
+        if status == "done" or status.startswith("error:"):
+            kind = "done" if status == "done" else "error"
+            yield f"data: {json.dumps({'type': kind, 'message': status})}\n\n"
+            return
+
+        q = _train_registry.stream_queue(safe)
+        if q is None:
+            return
+        loop = asyncio.get_event_loop()
+        while True:
+            item = await loop.run_in_executor(None, q.get)
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

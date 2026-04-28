@@ -9,5 +9,8 @@ uvicorn>=0.23
 pydantic>=2.0
 slowapi>=0.1.9
 
+# semantic policy matching (optional but recommended)
+sentence-transformers>=2.7
+
 # dev / test
 pytest>=8.0

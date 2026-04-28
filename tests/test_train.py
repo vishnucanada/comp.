@@ -4,7 +4,10 @@ import pytest
 from src.nlpn import NLPNLinear
 from src.enforcer import wrap_with_nlpn
 from src.policy import Policy
-from src.train import build_deny_examples, _tokenize_pair, train_nlpn, TrainConfig
+from src.train import (
+    build_deny_examples, build_adversarial_examples,
+    _tokenize_pair, train_nlpn, TrainConfig,
+)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -199,3 +202,59 @@ def test_train_no_deny_examples_raises():
     cfg = TrainConfig(epochs=1, lr=1e-3, max_seq_len=16, log_every=100)
     with pytest.raises(ValueError, match="No deny examples"):
         train_nlpn(model, tok, policy, config=cfg)
+
+
+# ── build_adversarial_examples ────────────────────────────────────────────────
+
+def test_adversarial_examples_nonempty():
+    p = Policy.from_text("DENY: salary\n  match: salary\n")
+    ex = build_adversarial_examples(p)
+    assert len(ex) > 0
+
+def test_adversarial_examples_format():
+    p = Policy.from_text("DENY: salary\n  match: salary\n")
+    for prompt, response in build_adversarial_examples(p):
+        assert isinstance(prompt, str) and len(prompt) > 0
+        assert isinstance(response, str)
+
+def test_adversarial_examples_refusal():
+    p = Policy.from_text("DENY: salary\n  match: salary\n")
+    for _, response in build_adversarial_examples(p):
+        assert "sorry" in response.lower() or "cannot" in response.lower()
+
+def test_adversarial_examples_empty_policy():
+    p = Policy.from_text("ALLOW: general\n")
+    assert build_adversarial_examples(p) == []
+
+def test_adversarial_examples_include_synonyms():
+    p = Policy.from_text("DENY: salary\n  match: salary\n")
+    prompts = [pr for pr, _ in build_adversarial_examples(p)]
+    # "salary" has synonyms like "pay", "wage", etc.
+    assert any("pay" in pr or "wage" in pr or "compensation" in pr for pr in prompts)
+
+def test_adversarial_examples_include_injection_templates():
+    p = Policy.from_text("DENY: salary\n  match: salary\n")
+    prompts = [pr for pr, _ in build_adversarial_examples(p)]
+    assert any("Ignore" in pr or "novel" in pr or "JSON" in pr for pr in prompts)
+
+
+# ── orth_reg training ─────────────────────────────────────────────────────────
+
+def test_train_with_orth_reg_runs():
+    model = _wrapped_model()
+    tok   = _FakeTok()
+    policy = _simple_policy()
+    cfg = TrainConfig(epochs=1, lr=1e-3, max_seq_len=16, log_every=100, orth_reg=0.01)
+    train_nlpn(model, tok, policy, config=cfg,
+               deny_examples=[("What is the name?", "I cannot help.")] * 4,
+               allow_examples=[("What is 2+2?", "4.")])
+
+def test_train_orth_reg_zero_same_as_default():
+    # orth_reg=0.0 should not change training behavior
+    model = _wrapped_model()
+    tok   = _FakeTok()
+    policy = _simple_policy()
+    cfg = TrainConfig(epochs=1, lr=1e-3, max_seq_len=16, log_every=100, orth_reg=0.0)
+    train_nlpn(model, tok, policy, config=cfg,
+               deny_examples=[("What is the name?", "I cannot help.")],
+               allow_examples=[("What is 2+2?", "4.")])

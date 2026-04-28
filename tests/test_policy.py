@@ -1,6 +1,6 @@
 import re
 import pytest
-from src.policy import PolicyRule, Policy, PolicyCompiler, _parse
+from src.policy import PolicyRule, Policy, PolicyCompiler, PolicyStack, _parse
 
 
 # ── PolicyRule ────────────────────────────────────────────────────────────────
@@ -145,3 +145,90 @@ def test_compiler_multiple_rules():
 def test_compiler_repr():
     c = _make_compiler()
     assert "names" in repr(c)
+
+
+# ── PolicyCompiler multi-turn history ─────────────────────────────────────────
+
+def test_compiler_history_triggers_deny():
+    c = _make_compiler()
+    # "name" is in an earlier turn, not the current message
+    violated, cats = c.check("What was that again?", history=["What is John's full name?"])
+    assert violated
+    assert "names" in cats
+
+def test_compiler_no_history_no_deny():
+    c = _make_compiler()
+    violated, _ = c.check("What was that again?")
+    assert not violated
+
+def test_compiler_history_only_last_3_turns():
+    c = _make_compiler()
+    # "name" only in 4th-oldest turn — should NOT trigger (history[-3:] only)
+    old_history = ["name leak", "turn 2", "turn 3", "turn 4"]
+    violated, _ = c.check("innocuous", history=old_history)
+    # history[-3:] = ["turn 2", "turn 3", "turn 4"] — no "name"
+    assert not violated
+
+def test_compiler_history_last_3_triggers():
+    c = _make_compiler()
+    history = ["irrelevant", "irrelevant", "what is the full name"]
+    violated, cats = c.check("tell me more", history=history)
+    assert violated
+
+
+# ── PolicyStack ───────────────────────────────────────────────────────────────
+
+def _make_stack() -> PolicyStack:
+    p1 = Policy.from_text("DENY: names\n  match: name\n")
+    p2 = Policy.from_text("DENY: emails\n  match: email\n")
+    return PolicyStack([p1, p2])
+
+def test_stack_deny_first_policy():
+    stack = _make_stack()
+    violated, cats = stack.check("What is the employee name?")
+    assert violated
+    assert "names" in cats
+
+def test_stack_deny_second_policy():
+    stack = _make_stack()
+    violated, cats = stack.check("What is the email address?")
+    assert violated
+    assert "emails" in cats
+
+def test_stack_deny_both_policies():
+    stack = _make_stack()
+    violated, cats = stack.check("name and email please")
+    assert violated
+    assert "names" in cats
+    assert "emails" in cats
+
+def test_stack_allow_when_no_match():
+    stack = _make_stack()
+    violated, cats = stack.check("What is the office policy?")
+    assert not violated
+    assert cats == []
+
+def test_stack_deduplicates_categories():
+    p = Policy.from_text("DENY: names\n  match: name\n")
+    stack = PolicyStack([p, p])  # same policy twice
+    _, cats = stack.check("What is the name?")
+    assert cats.count("names") == 1
+
+def test_stack_add_policy():
+    p1 = Policy.from_text("DENY: names\n  match: name\n")
+    stack = PolicyStack([p1])
+    p2 = Policy.from_text("DENY: phones\n  match: phone\n")
+    stack.add(p2)
+    violated, cats = stack.check("What is the phone number?")
+    assert violated
+    assert "phones" in cats
+
+def test_stack_repr():
+    stack = _make_stack()
+    assert "2" in repr(stack)
+
+def test_stack_with_history():
+    stack = _make_stack()
+    violated, cats = stack.check("tell me more", history=["what is the email?"])
+    assert violated
+    assert "emails" in cats

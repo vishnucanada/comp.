@@ -3,7 +3,7 @@ import pytest
 import torch
 import torch.nn as nn
 from src.nlpn import NLPNLinear
-from src.enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax, save_nlpn, load_nlpn
+from src.enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax, save_nlpn, load_nlpn, get_privilege_map
 
 
 class _TinyModel(nn.Module):
@@ -95,6 +95,50 @@ def test_set_privilege_invalid_raises():
     wrap_with_nlpn(model, rmax=8, target_modules=["fc1"])
     with pytest.raises(ValueError):
         set_privilege(model, 0)
+
+def test_set_privilege_dict_updates_matching_layer():
+    model = _TinyModel()
+    wrap_with_nlpn(model, rmax=8, target_modules=["fc1", "fc2"])
+    set_privilege(model, {"fc1": 3, "fc2": 5})
+    assert model.fc1.privilege == 3
+    assert model.fc2.privilege == 5
+
+def test_set_privilege_dict_unmatched_unchanged():
+    model = _TinyModel()
+    wrap_with_nlpn(model, rmax=8, target_modules=["fc1", "fc2"])
+    set_privilege(model, 4)          # set both to 4 first
+    set_privilege(model, {"fc1": 2}) # only fc1 should change
+    assert model.fc1.privilege == 2
+    assert model.fc2.privilege == 4  # unchanged
+
+def test_set_privilege_dict_exact_name_wins():
+    model = _TinyModel()
+    wrap_with_nlpn(model, rmax=8, target_modules=["fc1", "fc2"])
+    # "fc1" is both an exact match for fc1 and a substring of nothing else
+    set_privilege(model, {"fc1": 6})
+    assert model.fc1.privilege == 6
+
+
+# ── get_privilege_map ─────────────────────────────────────────────────────────
+
+def test_get_privilege_map_returns_all_layers():
+    model = _TinyModel()
+    wrap_with_nlpn(model, rmax=8, target_modules=["fc1", "fc2"])
+    pmap = get_privilege_map(model)
+    assert "fc1" in pmap
+    assert "fc2" in pmap
+
+def test_get_privilege_map_reflects_current_privilege():
+    model = _TinyModel()
+    wrap_with_nlpn(model, rmax=8, target_modules=["fc1", "fc2"])
+    set_privilege(model, {"fc1": 3, "fc2": 7})
+    pmap = get_privilege_map(model)
+    assert pmap["fc1"] == 3
+    assert pmap["fc2"] == 7
+
+def test_get_privilege_map_no_nlpn_empty():
+    model = _TinyModel()   # not wrapped
+    assert get_privilege_map(model) == {}
 
 
 # ── get_rmax ──────────────────────────────────────────────────────────────────

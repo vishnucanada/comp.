@@ -136,19 +136,70 @@ class PolicyCompiler:
     """
     Compile a Policy into a callable runtime monitor.
 
-    check(text) → (violated: bool, categories: list[str])
+    check(text, history=None) → (violated: bool, categories: list[str])
     """
 
     def __init__(self, policy: Policy):
         self.policy = policy
 
-    def check(self, text: str) -> tuple[bool, list[str]]:
-        violated = [r.category for r in self.policy.denied if r.matches(text)]
+    def check(
+        self,
+        text: str,
+        history: list[str] | None = None,
+    ) -> tuple[bool, list[str]]:
+        """Check *text* against deny rules.
+
+        Args:
+            text:    Current prompt or message.
+            history: Optional prior turn texts (oldest first).  The last 3 are
+                     included in matching to catch multi-turn extraction attacks.
+        """
+        combined = text
+        if history:
+            combined = " ".join(history[-3:]) + " " + text
+        violated = [r.category for r in self.policy.denied if r.matches(combined)]
         return bool(violated), violated
 
     def __repr__(self) -> str:
         cats = [r.category for r in self.policy.denied]
         return f"PolicyCompiler(deny={cats})"
+
+
+class PolicyStack:
+    """
+    Apply multiple policies simultaneously and take the union of deny decisions.
+
+    Any DENY match across *any* stacked policy triggers restriction — the most
+    restrictive result wins.  Useful for layering a base compliance policy with
+    department-specific or user-role-specific policies.
+
+    Usage::
+
+        stack = PolicyStack([base_policy, dept_policy])
+        violated, categories = stack.check("What is John's salary?")
+    """
+
+    def __init__(self, policies: list[Policy]):
+        self.compilers = [PolicyCompiler(p) for p in policies]
+
+    def check(
+        self,
+        text: str,
+        history: list[str] | None = None,
+    ) -> tuple[bool, list[str]]:
+        all_cats: list[str] = []
+        for compiler in self.compilers:
+            _, cats = compiler.check(text, history)
+            all_cats.extend(cats)
+        deduped = list(dict.fromkeys(all_cats))
+        return bool(deduped), deduped
+
+    def add(self, policy: Policy) -> "PolicyStack":
+        self.compilers.append(PolicyCompiler(policy))
+        return self
+
+    def __repr__(self) -> str:
+        return f"PolicyStack({len(self.compilers)} policies)"
 
 
 class PolicyAllocator:
@@ -176,9 +227,15 @@ class PolicyAllocator:
         self.tokenizer = tokenizer
         self.low_privilege = low_privilege
 
-    def allocate(self, model, input_ids: torch.Tensor, rmax: int) -> int:
+    def allocate(
+        self,
+        model,
+        input_ids: torch.Tensor,
+        rmax: int,
+        history: list[str] | None = None,
+    ) -> int:
         text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
-        violated, categories = self.compiler.check(text)
+        violated, categories = self.compiler.check(text, history)
         if violated:
             print(f"  [policy] DENY → {categories}  (privilege: {rmax} → {self.low_privilege})")
         else:
@@ -191,6 +248,7 @@ class PolicyAllocator:
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
         rmax: int | None = None,
+        history: list[str] | None = None,
         **generate_kwargs,
     ) -> tuple[torch.Tensor, int]:
         from .enforcer import set_privilege, get_rmax
@@ -198,7 +256,7 @@ class PolicyAllocator:
         if rmax is None:
             rmax = get_rmax(model)
 
-        g = self.allocate(model, input_ids, rmax)
+        g = self.allocate(model, input_ids, rmax, history=history)
         set_privilege(model, g)
 
         with torch.no_grad():
