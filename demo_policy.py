@@ -6,7 +6,6 @@ the policy is compiled from plain text (manager notes, compliance docs, etc.).
 Otherwise falls back to loading POLICY_FILE directly.
 """
 import os
-import torch
 import src
 from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 

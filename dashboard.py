@@ -38,6 +38,19 @@ def sanitize(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "", name)
 
 
+def _safe_name(name: str) -> str:
+    safe = sanitize(name)
+    if not safe:
+        raise HTTPException(400, "Invalid policy name")
+    return safe
+
+
+def _persist_policy(safe: str, description: str, structured: str | None) -> None:
+    (POLICIES_DIR / f"{safe}.json").write_text(json.dumps({"description": description}))
+    if structured:
+        (POLICIES_DIR / f"{safe}.txt").write_text(structured)
+
+
 def _load_policy(name: str) -> Policy | None:
     safe = sanitize(name)
     if not safe:
@@ -189,9 +202,7 @@ async def list_policies():
 
 @app.get("/api/policies/{name}")
 async def get_policy(name: str):
-    safe = sanitize(name)
-    if not safe:
-        raise HTTPException(400, "Invalid policy name")
+    safe = _safe_name(name)
     txt  = POLICIES_DIR / f"{safe}.txt"
     meta = POLICIES_DIR / f"{safe}.json"
     if not txt.exists() and not meta.exists():
@@ -208,20 +219,14 @@ async def get_policy(name: str):
 
 @app.post("/api/policies")
 async def save_policy(req: PolicySaveRequest):
-    safe = sanitize(req.name)
-    if not safe:
-        raise HTTPException(400, "Invalid policy name")
-    (POLICIES_DIR / f"{safe}.json").write_text(json.dumps({"description": req.description}))
-    if req.structured:
-        (POLICIES_DIR / f"{safe}.txt").write_text(req.structured)
+    safe = _safe_name(req.name)
+    _persist_policy(safe, req.description, req.structured)
     return {"saved": True, "name": safe}
 
 
 @app.delete("/api/policies/{name}")
 async def delete_policy(name: str):
-    safe = sanitize(name)
-    if not safe:
-        raise HTTPException(400, "Invalid policy name")
+    safe = _safe_name(name)
     deleted = False
     for ext in (".txt", ".json"):
         p = POLICIES_DIR / f"{safe}{ext}"
@@ -263,9 +268,7 @@ async def enact_policy(req: EnactRequest):
 
     safe = sanitize(req.policy_name)
     if safe:
-        (POLICIES_DIR / f"{safe}.json").write_text(json.dumps({"description": req.description}))
-        if structured_text:
-            (POLICIES_DIR / f"{safe}.txt").write_text(structured_text)
+        _persist_policy(safe, req.description, structured_text)
 
     return {
         "structured": structured_text,

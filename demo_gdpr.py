@@ -6,8 +6,8 @@ Standard personal data (names, emails, addresses)                  → 5% of rma
 Indirect / pseudonymised data                                      → 20% of rmax
 Permitted (job titles, public info, technical docs)                → 100% of rmax
 """
-import src
 from pathlib import Path
+import src
 from src.gdpr import GDPRPolicyParser
 from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 
