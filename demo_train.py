@@ -8,9 +8,10 @@ is preserved.
 No GPU required. Runs on CPU or Apple Silicon MPS.
 Expected time: 3-8 minutes on an M-series Mac for Qwen2.5-0.5B.
 """
+from pathlib import Path
 import torch
 import src
-from src.train import TrainConfig
+from src.train import TrainConfig, build_deny_examples, calibrate_privilege
 from src.utils import get_device, load_model, DEFAULT_MODEL_ID
 
 MODEL_ID    = DEFAULT_MODEL_ID
@@ -84,8 +85,19 @@ def main():
     evaluate("AFTER training", model, tokenizer, rmax, low_g, device)
 
     print(f"\n{'='*60}")
+    print("  Calibrating optimal low_g...")
+    deny_ex = build_deny_examples(policy)
+    low_g   = calibrate_privilege(model, tokenizer, deny_ex, rmax=rmax)
+    print(f"  Calibrated low_g={low_g}  (was {max(1, rmax // 20)})")
+
+    save_path = f"nlpn_checkpoints/{Path(POLICY_FILE).stem}"
+    print(f"\n  Saving checkpoint to {save_path}/")
+    src.save_nlpn(model, save_path, model_id=MODEL_ID)
+
+    print(f"\n{'='*60}")
     print("Done. At low privilege the model should now produce refusal-like")
     print("output for denied prompts while full-privilege responses are intact.")
+    print(f"Checkpoint saved to {save_path}/")
 
 
 if __name__ == "__main__":

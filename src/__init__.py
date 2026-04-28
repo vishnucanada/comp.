@@ -13,14 +13,14 @@ from .nlpn import NLPNLinear
 from .enforcer import wrap_with_nlpn, set_privilege, get_rmax, detect_rmax, save_nlpn, load_nlpn
 from .policy import Policy, PolicyCompiler, PolicyAllocator
 from .translator import PolicyTranslator
-from .gdpr import GDPRAllocator, GDPRPolicyParser, AuditLog
-from .train import train_nlpn, build_deny_examples, TrainConfig
+from .gdpr import GDPRAllocator, GDPRPolicyParser, AuditLog, verify_audit_log
+from .train import train_nlpn, build_deny_examples, TrainConfig, evaluate_nlpn, calibrate_privilege
 
 __all__ = [
     "NLPNLinear",
     "wrap_with_nlpn", "set_privilege", "get_rmax", "detect_rmax", "save_nlpn", "load_nlpn",
     "Policy", "PolicyCompiler", "PolicyAllocator",
     "PolicyTranslator",
-    "GDPRAllocator", "GDPRPolicyParser", "AuditLog",
-    "train_nlpn", "build_deny_examples", "TrainConfig",
+    "GDPRAllocator", "GDPRPolicyParser", "AuditLog", "verify_audit_log",
+    "train_nlpn", "build_deny_examples", "TrainConfig", "evaluate_nlpn", "calibrate_privilege",
 ]

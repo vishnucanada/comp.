@@ -279,3 +279,38 @@ class GDPRAllocator:
             privilege_granted=g,
             rmax=rmax,
         ))
+
+
+def verify_audit_log(path: str | Path, hmac_key: bytes) -> dict:
+    """Verify the integrity of an HMAC-signed audit log.
+
+    Returns:
+        {"total": int, "valid": int, "tampered": int, "unsigned": int}
+    """
+    path = Path(path)
+    total = valid = tampered = unsigned = 0
+
+    with path.open() as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            total += 1
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                tampered += 1
+                continue
+
+            stored = row.pop("_hmac", None)
+            if stored is None:
+                unsigned += 1
+                continue
+
+            expected = _hmac.new(hmac_key, json.dumps(row, sort_keys=True).encode(), "sha256").hexdigest()
+            if _hmac.compare_digest(stored, expected):
+                valid += 1
+            else:
+                tampered += 1
+
+    return {"total": total, "valid": valid, "tampered": tampered, "unsigned": unsigned}

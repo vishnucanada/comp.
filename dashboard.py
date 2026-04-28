@@ -1,35 +1,60 @@
+import asyncio
 import os
 import sys
 import json
+import queue
 import re
+import time
 import urllib.request as _urllib
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from threading import Thread, Lock
+
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 sys.path.insert(0, str(Path(__file__).parent))
 from src.policy import Policy, PolicyCompiler
 from src.translator import PolicyTranslator
 
-# ── Config constants ──────────────────────────────────────────────────────────
-OLLAMA_BASE_URL   = "http://localhost:11434"
+# ── Config ────────────────────────────────────────────────────────────────────
+OLLAMA_BASE_URL   = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_PREFERRED  = "qwen2.5:0.5b"
 ANTHROPIC_MODEL   = "claude-haiku-4-5-20251001"
 ANTHROPIC_MAX_TOK = 1024
 ALLOWED_ORIGINS   = os.environ.get("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
+API_KEY           = os.environ.get("API_KEY", "")
 
+# ── App setup ─────────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="comp. Admin Dashboard")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
-POLICIES_DIR = Path(__file__).parent / "policies"
+POLICIES_DIR    = Path(__file__).parent / "policies"
+HISTORY_DIR     = Path(__file__).parent / "policies" / ".history"
+CHECKPOINTS_DIR = Path(__file__).parent / "nlpn_checkpoints"
 POLICIES_DIR.mkdir(exist_ok=True)
+HISTORY_DIR.mkdir(exist_ok=True)
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+def _require_auth(request: Request) -> None:
+    if not API_KEY:
+        return
+    if request.headers.get("X-API-Key", "") != API_KEY:
+        raise HTTPException(401, "Invalid or missing API key")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -46,9 +71,20 @@ def _safe_name(name: str) -> str:
 
 
 def _persist_policy(safe: str, description: str, structured: str | None) -> None:
-    (POLICIES_DIR / f"{safe}.json").write_text(json.dumps({"description": description}))
+    meta_file = POLICIES_DIR / f"{safe}.json"
+    txt_file  = POLICIES_DIR / f"{safe}.txt"
+    # Archive existing version before overwriting
+    if meta_file.exists() or txt_file.exists():
+        ts      = time.strftime("%Y%m%dT%H%M%S")
+        archive = HISTORY_DIR / safe
+        archive.mkdir(exist_ok=True)
+        if meta_file.exists():
+            (archive / f"{ts}.json").write_text(meta_file.read_text())
+        if txt_file.exists():
+            (archive / f"{ts}.txt").write_text(txt_file.read_text())
+    meta_file.write_text(json.dumps({"description": description}))
     if structured:
-        (POLICIES_DIR / f"{safe}.txt").write_text(structured)
+        txt_file.write_text(structured)
 
 
 def _load_policy(name: str) -> Policy | None:
@@ -69,10 +105,70 @@ def _load_policy(name: str) -> Policy | None:
     return None
 
 
-# ── LLM backends ─────────────────────────────────────────────────────────────
+# ── NLPN Model Registry ───────────────────────────────────────────────────────
+
+class _ModelRegistry:
+    """Background-loadable NLPN model cache. Thread-safe."""
+
+    def __init__(self):
+        self._lock   = Lock()
+        self._models: dict[str, object] = {}
+        self._toks:   dict[str, object] = {}
+        self._status: dict[str, str]    = {}
+
+    def status(self, name: str) -> str:
+        return self._status.get(name, "not_loaded")
+
+    def all_status(self) -> dict[str, str]:
+        return dict(self._status)
+
+    def get(self, name: str):
+        with self._lock:
+            if name in self._models:
+                return self._models[name], self._toks[name]
+        return None, None
+
+    def load_async(self, name: str) -> None:
+        with self._lock:
+            if self._status.get(name) in ("loading", "ready"):
+                return
+            self._status[name] = "loading"
+        Thread(target=self._load, args=(name,), daemon=True).start()
+
+    def _load(self, name: str) -> None:
+        try:
+            from src.utils import load_model
+            from src.enforcer import wrap_with_nlpn, load_nlpn, detect_rmax
+
+            ckpt     = CHECKPOINTS_DIR / name
+            cfg_path = ckpt / "nlpn_config.json"
+            cfg      = json.loads(cfg_path.read_text())
+            model_id = cfg.get("model_id")
+            if not model_id:
+                raise ValueError("nlpn_config.json missing model_id")
+
+            model, tokenizer = load_model(model_id)
+            rmax         = detect_rmax(model)
+            leaf_names   = list({n.split(".")[-1] for n in cfg.get("layers", {})})
+            wrap_with_nlpn(model, rmax=rmax, target_modules=leaf_names)
+            load_nlpn(model, ckpt)
+            model.eval()
+
+            with self._lock:
+                self._models[name] = model
+                self._toks[name]   = tokenizer
+                self._status[name] = "ready"
+        except Exception as e:
+            with self._lock:
+                self._status[name] = f"error:{e}"
+
+
+_registry = _ModelRegistry()
+
+
+# ── LLM backends ──────────────────────────────────────────────────────────────
 
 def _ollama_model() -> str | None:
-    """Return the best available Ollama model name, or None if Ollama isn't running."""
     try:
         req = _urllib.Request(f"{OLLAMA_BASE_URL}/api/tags")
         with _urllib.urlopen(req, timeout=3) as r:
@@ -136,35 +232,97 @@ def _get_response(message: str, history: list[dict]) -> tuple[str, str]:
     )
 
 
-# ── Models ───────────────────────────────────────────────────────────────────
+def _nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str, str]:
+    """Generate with rank-restricted NLPN model."""
+    import torch
+    from src.enforcer import set_privilege, get_rmax
+
+    rmax   = get_rmax(model)
+    policy = _load_policy(policy_name)
+    g      = rmax
+
+    if policy:
+        violated, _ = PolicyCompiler(policy).check(message)
+        if violated:
+            g = max(1, rmax // 20)
+
+    set_privilege(model, g)
+    enc = tokenizer(message, return_tensors="pt")
+    with torch.no_grad():
+        out = model.generate(
+            enc["input_ids"],
+            max_new_tokens=200,
+            pad_token_id=tokenizer.eos_token_id,
+            do_sample=False,
+        )
+    new_ids = out[0][enc["input_ids"].shape[1]:]
+    return tokenizer.decode(new_ids, skip_special_tokens=True), f"nlpn/{policy_name}"
+
+
+def _ollama_stream_to_queue(message: str, history: list[dict], model_name: str, q: queue.Queue) -> None:
+    """Push SSE-style dicts to q in a background thread; sentinel is None."""
+    try:
+        body = json.dumps({
+            "model": model_name,
+            "messages": history + [{"role": "user", "content": message}],
+            "stream": True,
+        }).encode()
+        req = _urllib.Request(
+            f"{OLLAMA_BASE_URL}/api/chat",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urllib.urlopen(req, timeout=120) as r:
+            for raw in r:
+                try:
+                    chunk = json.loads(raw)
+                    text  = chunk.get("message", {}).get("content", "")
+                    if text:
+                        q.put({"type": "chunk", "text": text})
+                    if chunk.get("done"):
+                        break
+                except json.JSONDecodeError:
+                    continue
+    except Exception as e:
+        q.put({"type": "error", "text": str(e)})
+    finally:
+        q.put(None)
+
+
+# ── Pydantic models ───────────────────────────────────────────────────────────
 
 class PolicySaveRequest(BaseModel):
-    name: str = Field(..., max_length=64)
-    description: str = Field(..., max_length=4096)
-    structured: str | None = Field(None, max_length=16384)
+    name:        str        = Field(..., max_length=64)
+    description: str        = Field(..., max_length=4096)
+    structured:  str | None = Field(None, max_length=16384)
 
 class TestCase(BaseModel):
-    prompt: str = Field(..., max_length=2048)
+    prompt:   str = Field(..., max_length=2048)
     expected: str
 
 class EnactRequest(BaseModel):
-    policy_name: str = Field(..., max_length=64)
-    description: str = Field(..., max_length=4096)
-    test_cases: list[TestCase]
+    policy_name:   str           = Field(..., max_length=64)
+    description:   str           = Field(..., max_length=4096)
+    test_cases:    list[TestCase]
     low_privilege: int = 1
-    rmax: int = 100
+    rmax:          int = 100
 
 class ChatMessage(BaseModel):
-    role: str
+    role:    str
     content: str = Field(..., max_length=4096)
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., max_length=4096)
-    policy_name: str | None = Field(None, max_length=64)
-    history: list[ChatMessage] = []
+    message:     str               = Field(..., max_length=4096)
+    policy_name: str | None        = Field(None, max_length=64)
+    history:     list[ChatMessage] = []
+
+class StreamChatRequest(BaseModel):
+    message:     str               = Field(..., max_length=4096)
+    policy_name: str | None        = Field(None, max_length=64)
+    history:     list[ChatMessage] = []
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
+# ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.get("/favicon.png")
 async def favicon():
@@ -175,9 +333,11 @@ async def landing():
     return HTMLResponse((Path(__file__).parent / "landing.html").read_text())
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard():
+async def dashboard_page():
     return HTMLResponse((Path(__file__).parent / "dashboard.html").read_text())
 
+
+# ── Model routes ──────────────────────────────────────────────────────────────
 
 @app.get("/api/models")
 async def list_models():
@@ -190,13 +350,30 @@ async def list_models():
     return {"backends": backends, "ready": bool(backends)}
 
 
+@app.get("/api/models/status")
+async def models_status():
+    return {"models": _registry.all_status()}
+
+
+@app.post("/api/models/load/{name}")
+async def load_model_endpoint(name: str, _auth=Depends(_require_auth)):
+    safe = _safe_name(name)
+    if not (CHECKPOINTS_DIR / safe).exists():
+        raise HTTPException(404, f"No checkpoint found at nlpn_checkpoints/{safe}")
+    _registry.load_async(safe)
+    return {"status": "loading", "name": safe}
+
+
+# ── Policy routes ─────────────────────────────────────────────────────────────
+
 @app.get("/api/policies")
 async def list_policies():
     names: set[str] = set()
     for p in POLICIES_DIR.glob("*.txt"):
         names.add(p.stem)
     for p in POLICIES_DIR.glob("*.json"):
-        names.add(p.stem)
+        if p.parent == POLICIES_DIR:
+            names.add(p.stem)
     return {"policies": [{"name": n} for n in sorted(names)]}
 
 
@@ -217,16 +394,48 @@ async def get_policy(name: str):
     return {"name": safe, "description": description, "structured": structured}
 
 
+@app.get("/api/policies/{name}/history")
+async def policy_history(name: str):
+    safe    = _safe_name(name)
+    archive = HISTORY_DIR / safe
+    if not archive.exists():
+        return {"name": safe, "versions": []}
+    versions = sorted(
+        {p.stem for p in archive.iterdir() if p.suffix in (".json", ".txt")},
+        reverse=True,
+    )
+    return {"name": safe, "versions": versions}
+
+
+@app.get("/api/policies/{name}/versions/{version}")
+async def policy_version(name: str, version: str):
+    safe    = _safe_name(name)
+    ver     = sanitize(version)
+    archive = HISTORY_DIR / safe
+    txt_v   = archive / f"{ver}.txt"
+    meta_v  = archive / f"{ver}.json"
+    if not txt_v.exists() and not meta_v.exists():
+        raise HTTPException(404, "Version not found")
+    structured  = txt_v.read_text() if txt_v.exists() else ""
+    description = ""
+    if meta_v.exists():
+        try:
+            description = json.loads(meta_v.read_text()).get("description", "")
+        except Exception:
+            pass
+    return {"name": safe, "version": ver, "description": description, "structured": structured}
+
+
 @app.post("/api/policies")
-async def save_policy(req: PolicySaveRequest):
+async def save_policy(req: PolicySaveRequest, _auth=Depends(_require_auth)):
     safe = _safe_name(req.name)
     _persist_policy(safe, req.description, req.structured)
     return {"saved": True, "name": safe}
 
 
 @app.delete("/api/policies/{name}")
-async def delete_policy(name: str):
-    safe = _safe_name(name)
+async def delete_policy(name: str, _auth=Depends(_require_auth)):
+    safe    = _safe_name(name)
     deleted = False
     for ext in (".txt", ".json"):
         p = POLICIES_DIR / f"{safe}{ext}"
@@ -238,8 +447,11 @@ async def delete_policy(name: str):
     return {"deleted": True}
 
 
+# ── Enact ─────────────────────────────────────────────────────────────────────
+
 @app.post("/api/enact")
-async def enact_policy(req: EnactRequest):
+@limiter.limit("10/minute")
+async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_require_auth)):
     structured_text = None
     try:
         policy = PolicyTranslator().translate(req.description)
@@ -248,7 +460,7 @@ async def enact_policy(req: EnactRequest):
         raise HTTPException(500, f"Translation error: {e}")
 
     compiler = PolicyCompiler(policy)
-    results = []
+    results  = []
     for tc in req.test_cases:
         violated, categories = compiler.check(tc.prompt)
         privilege     = req.low_privilege if violated else req.rmax
@@ -265,7 +477,6 @@ async def enact_policy(req: EnactRequest):
         })
 
     correct = sum(1 for r in results if r["correct"])
-
     safe = sanitize(req.policy_name)
     if safe:
         _persist_policy(safe, req.description, structured_text)
@@ -281,8 +492,11 @@ async def enact_policy(req: EnactRequest):
     }
 
 
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+@limiter.limit("30/minute")
+async def chat(request: Request, req: ChatRequest):
     decision   = "ALLOW"
     violations: list[str] = []
 
@@ -301,15 +515,101 @@ async def chat(req: ChatRequest):
             "model":      "policy-enforcer",
         }
 
-    history = [{"role": m.role, "content": m.content} for m in req.history]
-    response, model = _get_response(req.message, history)
-    return {
-        "decision":   "ALLOW",
-        "violations": [],
-        "response":   response,
-        "model":      model,
-    }
+    if req.policy_name:
+        safe = sanitize(req.policy_name)
+        model, tokenizer = _registry.get(safe)
+        if model is not None:
+            loop = asyncio.get_event_loop()
+            response, model_name = await loop.run_in_executor(
+                None, _nlpn_generate, model, tokenizer, req.message, safe
+            )
+            return {"decision": "ALLOW", "violations": [], "response": response, "model": model_name}
 
+    history = [{"role": m.role, "content": m.content} for m in req.history]
+    response, model_name = _get_response(req.message, history)
+    return {"decision": "ALLOW", "violations": [], "response": response, "model": model_name}
+
+
+# ── Streaming chat ────────────────────────────────────────────────────────────
+
+@app.post("/api/chat/stream")
+@limiter.limit("30/minute")
+async def chat_stream(request: Request, req: StreamChatRequest):
+    decision   = "ALLOW"
+    violations: list[str] = []
+
+    if req.policy_name:
+        policy = _load_policy(req.policy_name)
+        if policy:
+            violated, violations = PolicyCompiler(policy).check(req.message)
+            decision = "DENY" if violated else "ALLOW"
+
+    async def event_generator():
+        yield f"data: {json.dumps({'type': 'policy', 'decision': decision, 'violations': violations})}\n\n"
+
+        if decision == "DENY":
+            rules = ", ".join(violations)
+            yield f"data: {json.dumps({'type': 'chunk', 'text': f'ERROR this prompt has been blocked by policy [{rules}]'})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'model': 'policy-enforcer'})}\n\n"
+            return
+
+        # NLPN model — full generation, then stream word by word
+        if req.policy_name:
+            safe = sanitize(req.policy_name)
+            model, tokenizer = _registry.get(safe)
+            if model is not None:
+                loop = asyncio.get_event_loop()
+                response, model_name = await loop.run_in_executor(
+                    None, _nlpn_generate, model, tokenizer, req.message, safe
+                )
+                for word in response.split():
+                    yield f"data: {json.dumps({'type': 'chunk', 'text': word + ' '})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'model': model_name})}\n\n"
+                return
+
+        # Ollama streaming
+        ollama = _ollama_model()
+        if ollama:
+            q: queue.Queue = queue.Queue()
+            history = [{"role": m.role, "content": m.content} for m in req.history]
+            Thread(
+                target=_ollama_stream_to_queue,
+                args=(req.message, history, ollama, q),
+                daemon=True,
+            ).start()
+            loop = asyncio.get_event_loop()
+            while True:
+                item = await loop.run_in_executor(None, q.get)
+                if item is None:
+                    break
+                yield f"data: {json.dumps(item)}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'model': f'ollama/{ollama}'})}\n\n"
+            return
+
+        # Anthropic fallback (non-streaming)
+        key = os.environ.get("ANTHROPIC_API_KEY")
+        if key:
+            history = [{"role": m.role, "content": m.content} for m in req.history]
+            loop   = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _anthropic_chat, req.message, history)
+            if result:
+                text, model_name = result
+                yield f"data: {json.dumps({'type': 'chunk', 'text': text})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'model': model_name})}\n\n"
+                return
+
+        msg = (
+            f"No LLM backend detected. "
+            f"Run `ollama pull {OLLAMA_PREFERRED} && ollama serve`, "
+            f"or set ANTHROPIC_API_KEY."
+        )
+        yield f"data: {json.dumps({'type': 'chunk', 'text': msg})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'model': 'none'})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# ── Test case defaults ────────────────────────────────────────────────────────
 
 @app.get("/api/test-cases/defaults")
 async def default_test_cases():
