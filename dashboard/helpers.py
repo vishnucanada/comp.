@@ -58,3 +58,15 @@ def _load_policy(name: str):
         except Exception:
             pass
     return None
+
+
+def policy_check(policy_name: str | None, message: str) -> tuple[str, list[str]]:
+    """Return (decision, violations) for a message against a named policy."""
+    from src.policy import PolicyCompiler
+    if not policy_name:
+        return "ALLOW", []
+    policy = _load_policy(policy_name)
+    if not policy:
+        return "ALLOW", []
+    violated, violations = PolicyCompiler(policy).check(message)
+    return ("DENY" if violated else "ALLOW"), violations

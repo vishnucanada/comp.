@@ -17,9 +17,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ..backends import anthropic_chat, get_response, nlpn_generate, ollama_stream_to_queue
+from ..backends import get_response, nlpn_generate, ollama_stream_to_queue
 from ..config import OLLAMA_PREFERRED
-from ..helpers import _load_policy, sanitize
+from ..helpers import policy_check, sanitize
 from ..registry import model_registry
 from ..deps import limiter
 
@@ -56,17 +56,6 @@ def _split_history(messages: list[OAIMessage]) -> tuple[str, list[dict]]:
         if msgs[i]["role"] == "user":
             return msgs[i]["content"], msgs[:i]
     return "", msgs
-
-
-def _policy_check(policy_name: str | None, message: str) -> tuple[str, list[str]]:
-    from src.policy import PolicyCompiler
-    if not policy_name:
-        return "ALLOW", []
-    policy = _load_policy(policy_name)
-    if not policy:
-        return "ALLOW", []
-    violated, violations = PolicyCompiler(policy).check(message)
-    return ("DENY" if violated else "ALLOW"), violations
 
 
 def _oai_response(content: str, model: str, finish: str = "stop") -> dict:
@@ -110,7 +99,7 @@ def _oai_chunk(delta_content: str | None, model: str, finish: str | None = None)
 @limiter.limit("30/minute")
 async def chat_completions(request: Request, req: OAIRequest):
     message, history = _split_history(req.messages)
-    decision, violations = _policy_check(req.policy, message)
+    decision, violations = policy_check(req.policy, message)
 
     policy_meta = {
         "decision":   decision,

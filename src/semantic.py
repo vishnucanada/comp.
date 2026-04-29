@@ -14,7 +14,7 @@ Usage::
 """
 from __future__ import annotations
 
-from .policy import Policy, PolicyCompiler, PolicyRule
+from .policy import Policy, PolicyCompiler, PolicyRule, _combine
 
 _EMBED_MODEL = "all-MiniLM-L6-v2"
 
@@ -96,8 +96,6 @@ class SemanticPolicyCompiler:
             (violated: bool, categories: list[str])
         """
         combined = _combine(text, history)
-
-        # 1. Keyword / regex (always)
         _, kw_cats = self._base.check(combined)
 
         # 2. Semantic (when encoder available)
@@ -116,9 +114,3 @@ class SemanticPolicyCompiler:
         return bool(all_cats), all_cats
 
 
-def _combine(text: str, history: list[str] | None) -> str:
-    if not history:
-        return text
-    # Only look at the last 3 turns to avoid false positives from old context
-    context = " ".join(history[-3:])
-    return context + " " + text

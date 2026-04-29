@@ -22,13 +22,17 @@ class _TinyLM(nn.Module):
     """Smallest model compatible with the full NLPN pipeline."""
     VOCAB = 50
 
-    def __init__(self):
+    def __init__(self, seed: int = 42):
         super().__init__()
-        self.embed     = nn.Embedding(self.VOCAB, 16)
-        self.down_proj = nn.Linear(16, 16)   # targeted by _DEFAULT_TARGET_MODULES
-        self.up_proj   = nn.Linear(16, 16)   # targeted by _DEFAULT_TARGET_MODULES
-        self.q_proj    = nn.Linear(16, 16)   # attention — targeted by _DEFAULT_TARGET_MODULES
-        self.lm_head   = nn.Linear(16, self.VOCAB)
+        # Fixed seed so two instances with the same seed have identical base weights.
+        gen = torch.Generator().manual_seed(seed)
+        with torch.random.fork_rng():
+            torch.manual_seed(seed)
+            self.embed     = nn.Embedding(self.VOCAB, 16)
+            self.down_proj = nn.Linear(16, 16)   # targeted by _DEFAULT_TARGET_MODULES
+            self.up_proj   = nn.Linear(16, 16)   # targeted by _DEFAULT_TARGET_MODULES
+            self.q_proj    = nn.Linear(16, 16)   # attention — targeted by _DEFAULT_TARGET_MODULES
+            self.lm_head   = nn.Linear(16, self.VOCAB)
 
     def forward(self, input_ids, **_):
         x = torch.relu(self.embed(input_ids))
@@ -54,8 +58,12 @@ class _FakeTok:
     eos_token_id = 1
     pad_token_id = 0
 
+    def __init__(self):
+        self._id_to_text: dict[tuple, str] = {}
+
     def __call__(self, text, return_tensors=None, add_special_tokens=True, padding=False, **_):
         ids = [max(2, abs(hash(w)) % 48) for w in text.split()[:6]] or [2]
+        self._id_to_text[tuple(ids)] = text  # store for faithful decode
         if return_tensors == "pt":
             t = torch.tensor([ids])
             if padding:
@@ -65,7 +73,8 @@ class _FakeTok:
 
     def decode(self, ids, skip_special_tokens=True):
         seq = ids.tolist() if hasattr(ids, "tolist") else list(ids)
-        return " ".join(str(i) for i in seq if i > 1)
+        # Return original text if available (so policy compiler sees real words)
+        return self._id_to_text.get(tuple(seq), " ".join(str(i) for i in seq if i > 1))
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

@@ -39,6 +39,8 @@ class PolicyRule:
     category: str
     keywords: list[str] = field(default_factory=list)
     patterns: list[re.Pattern] = field(default_factory=list)
+    severity: str = "none"          # GDPR tier: critical | high | medium | none
+    article: int | None = None      # GDPR article number
 
     def matches(self, text: str) -> bool:
         text_lower = text.lower()
@@ -50,6 +52,13 @@ class PolicyRule:
 
     def __repr__(self) -> str:
         return f"PolicyRule({self.action}, {self.category!r})"
+
+
+def _combine(text: str, history: list[str] | None) -> str:
+    """Prepend the last 3 history turns to catch multi-turn extraction attacks."""
+    if not history:
+        return text
+    return " ".join(history[-3:]) + " " + text
 
 
 @dataclass
@@ -126,6 +135,15 @@ def _parse(text: str) -> Policy:
             except re.error as e:
                 print(f"Warning: skipping invalid regex {pattern_str!r}: {e}")
 
+        elif current and line.lower().startswith("severity:"):
+            current.severity = line.split(":", 1)[1].strip().lower()
+
+        elif current and line.lower().startswith("article:"):
+            try:
+                current.article = int(line.split(":", 1)[1].strip())
+            except ValueError:
+                pass
+
     if current:
         rules.append(current)
 
@@ -147,16 +165,7 @@ class PolicyCompiler:
         text: str,
         history: list[str] | None = None,
     ) -> tuple[bool, list[str]]:
-        """Check *text* against deny rules.
-
-        Args:
-            text:    Current prompt or message.
-            history: Optional prior turn texts (oldest first).  The last 3 are
-                     included in matching to catch multi-turn extraction attacks.
-        """
-        combined = text
-        if history:
-            combined = " ".join(history[-3:]) + " " + text
+        combined = _combine(text, history)
         violated = [r.category for r in self.policy.denied if r.matches(combined)]
         return bool(violated), violated
 
@@ -202,27 +211,42 @@ class PolicyStack:
         return f"PolicyStack({len(self.compilers)} policies)"
 
 
-class PolicyAllocator:
-    """
-    Allocator driven by a compiled policy.
+class _BaseAllocator:
+    """Shared generate() implementation for all allocators."""
 
-    For each request:
-      - Decode input_ids → text
-      - Run PolicyCompiler.check()
-      - If any DENY rule fires → return low_privilege
-      - Otherwise → return rmax (full privilege)
+    tokenizer: object  # set by subclass
 
-    low_privilege is a deployer hyperparameter.
-    Ideally determined via beam-search optimization (paper §5.5) so that
-    the target capability is suppressed while collateral degradation is minimal.
-    """
+    def allocate(self, model, input_ids: torch.Tensor, rmax: int, **kwargs) -> int:
+        raise NotImplementedError
 
-    def __init__(
+    def generate(
         self,
-        compiler: PolicyCompiler,
-        tokenizer,
-        low_privilege: int = 1,
-    ):
+        model,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        rmax: int | None = None,
+        **generate_kwargs,
+    ) -> tuple[torch.Tensor, int]:
+        from .enforcer import set_privilege, get_rmax
+
+        if rmax is None:
+            rmax = get_rmax(model)
+        g = self.allocate(model, input_ids, rmax, **generate_kwargs.pop("_alloc_kwargs", {}))
+        set_privilege(model, g)
+        with torch.no_grad():
+            output = model.generate(
+                input_ids,
+                attention_mask=attention_mask,
+                pad_token_id=self.tokenizer.eos_token_id,
+                **generate_kwargs,
+            )
+        return output, g
+
+
+class PolicyAllocator(_BaseAllocator):
+    """Allocator driven by a compiled policy: DENY → low_privilege, else rmax."""
+
+    def __init__(self, compiler: PolicyCompiler, tokenizer, low_privilege: int = 1):
         self.compiler = compiler
         self.tokenizer = tokenizer
         self.low_privilege = low_privilege
@@ -233,6 +257,7 @@ class PolicyAllocator:
         input_ids: torch.Tensor,
         rmax: int,
         history: list[str] | None = None,
+        **_,
     ) -> int:
         text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         violated, categories = self.compiler.check(text, history)
@@ -242,28 +267,16 @@ class PolicyAllocator:
             print(f"  [policy] ALLOW  (privilege: {rmax})")
         return self.low_privilege if violated else rmax
 
-    def generate(
-        self,
-        model,
-        input_ids: torch.Tensor,
-        attention_mask: torch.Tensor | None = None,
-        rmax: int | None = None,
-        history: list[str] | None = None,
-        **generate_kwargs,
-    ) -> tuple[torch.Tensor, int]:
+    def generate(self, model, input_ids, attention_mask=None, rmax=None,
+                 history=None, **generate_kwargs):
         from .enforcer import set_privilege, get_rmax
-
         if rmax is None:
             rmax = get_rmax(model)
-
         g = self.allocate(model, input_ids, rmax, history=history)
         set_privilege(model, g)
-
         with torch.no_grad():
             output = model.generate(
-                input_ids,
-                attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id,
-                **generate_kwargs,
+                input_ids, attention_mask=attention_mask,
+                pad_token_id=self.tokenizer.eos_token_id, **generate_kwargs,
             )
         return output, g

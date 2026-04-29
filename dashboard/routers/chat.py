@@ -14,30 +14,17 @@ from ..backends import (
 )
 from ..config import OLLAMA_PREFERRED
 from ..deps import limiter
-from ..helpers import _load_policy, sanitize
+from ..helpers import policy_check, sanitize
 from ..registry import model_registry
 from ..schemas import ChatRequest, StreamChatRequest
 
 router = APIRouter()
 
 
-def _policy_check(policy_name: str | None, message: str):
-    """Return (decision, violations) for the given message against a named policy."""
-    from src.policy import PolicyCompiler
-
-    if not policy_name:
-        return "ALLOW", []
-    policy = _load_policy(policy_name)
-    if not policy:
-        return "ALLOW", []
-    violated, violations = PolicyCompiler(policy).check(message)
-    return ("DENY" if violated else "ALLOW"), violations
-
-
 @router.post("/api/chat")
 @limiter.limit("30/minute")
 async def chat(request: Request, req: ChatRequest):
-    decision, violations = _policy_check(req.policy_name, req.message)
+    decision, violations = policy_check(req.policy_name, req.message)
 
     if decision == "DENY":
         rules = ", ".join(violations)
@@ -48,7 +35,6 @@ async def chat(request: Request, req: ChatRequest):
             "model":      "policy-enforcer",
         }
 
-    # Use NLPN model when one is loaded for this policy
     if req.policy_name:
         model, tokenizer = model_registry.get(sanitize(req.policy_name))
         if model is not None:
@@ -67,7 +53,7 @@ async def chat(request: Request, req: ChatRequest):
 @router.post("/api/chat/stream")
 @limiter.limit("30/minute")
 async def chat_stream(request: Request, req: StreamChatRequest):
-    decision, violations = _policy_check(req.policy_name, req.message)
+    decision, violations = policy_check(req.policy_name, req.message)
 
     async def event_generator():
         yield f"data: {json.dumps({'type': 'policy', 'decision': decision, 'violations': violations})}\n\n"
