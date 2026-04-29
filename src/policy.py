@@ -174,76 +174,7 @@ class PolicyCompiler:
         return f"PolicyCompiler(deny={cats})"
 
 
-class PolicyStack:
-    """
-    Apply multiple policies simultaneously and take the union of deny decisions.
-
-    Any DENY match across *any* stacked policy triggers restriction — the most
-    restrictive result wins.  Useful for layering a base compliance policy with
-    department-specific or user-role-specific policies.
-
-    Usage::
-
-        stack = PolicyStack([base_policy, dept_policy])
-        violated, categories = stack.check("What is John's salary?")
-    """
-
-    def __init__(self, policies: list[Policy]):
-        self.compilers = [PolicyCompiler(p) for p in policies]
-
-    def check(
-        self,
-        text: str,
-        history: list[str] | None = None,
-    ) -> tuple[bool, list[str]]:
-        all_cats: list[str] = []
-        for compiler in self.compilers:
-            _, cats = compiler.check(text, history)
-            all_cats.extend(cats)
-        deduped = list(dict.fromkeys(all_cats))
-        return bool(deduped), deduped
-
-    def add(self, policy: Policy) -> "PolicyStack":
-        self.compilers.append(PolicyCompiler(policy))
-        return self
-
-    def __repr__(self) -> str:
-        return f"PolicyStack({len(self.compilers)} policies)"
-
-
-class _BaseAllocator:
-    """Shared generate() implementation for all allocators."""
-
-    tokenizer: object  # set by subclass
-
-    def allocate(self, model, input_ids: torch.Tensor, rmax: int, **kwargs) -> int:
-        raise NotImplementedError
-
-    def generate(
-        self,
-        model,
-        input_ids: torch.Tensor,
-        attention_mask: torch.Tensor | None = None,
-        rmax: int | None = None,
-        **generate_kwargs,
-    ) -> tuple[torch.Tensor, int]:
-        from .enforcer import set_privilege, get_rmax
-
-        if rmax is None:
-            rmax = get_rmax(model)
-        g = self.allocate(model, input_ids, rmax, **generate_kwargs.pop("_alloc_kwargs", {}))
-        set_privilege(model, g)
-        with torch.no_grad():
-            output = model.generate(
-                input_ids,
-                attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id,
-                **generate_kwargs,
-            )
-        return output, g
-
-
-class PolicyAllocator(_BaseAllocator):
+class PolicyAllocator:
     """Allocator driven by a compiled policy: DENY → low_privilege, else rmax."""
 
     def __init__(self, compiler: PolicyCompiler, tokenizer, low_privilege: int = 1):

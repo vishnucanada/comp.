@@ -93,15 +93,6 @@ def set_privilege(model: nn.Module, g: int | dict[str, int]) -> None:
             module.privilege = new_g
 
 
-def get_privilege_map(model: nn.Module) -> dict[str, int]:
-    """Return {layer_name: current_privilege} for every NLPNLinear in the model."""
-    return {
-        name: module.privilege
-        for name, module in model.named_modules()
-        if isinstance(module, NLPNLinear)
-    }
-
-
 def get_rmax(model: nn.Module) -> int:
     """Return rmax from the first NLPNLinear found."""
     for module in model.modules():

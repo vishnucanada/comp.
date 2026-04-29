@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 import torch
-from .policy import Policy, PolicyRule, _BaseAllocator, _parse
+from .policy import Policy, PolicyRule, _parse
 from .enforcer import set_privilege, get_rmax
 
 @dataclass
@@ -114,7 +114,7 @@ class GDPRPolicyParser:
         return policy.rules, name
 
 
-class GDPRAllocator(_BaseAllocator):
+class GDPRAllocator:
     """
     Allocator that maps GDPR severity tiers to privilege levels and writes an audit log.
     """
