@@ -220,17 +220,39 @@ pytest tests/test_integration.py -v   # integration tests only
 
 ```
 src/
-  nlpn.py        NLPNLinear — rank-restricted linear layer (core primitive)
-  enforcer.py    wrap_with_nlpn, save_nlpn, load_nlpn
-  policy.py      Policy, PolicyCompiler, PolicyAllocator
-  translator.py  NLP-based plain-English → Policy converter
-  gdpr.py        GDPRAllocator, AuditLog, verify_audit_log
-  train.py       train_nlpn, evaluate_nlpn, calibrate_privilege
-  utils.py       get_device, load_model (shared by demos)
-tests/           Unit + integration tests
-policies/        Example policy files
-demo_policy.py   End-to-end enforcement demo
-demo_gdpr.py     GDPR tiered enforcement demo
-demo_train.py    Training + save demo
-dashboard.py     FastAPI web dashboard
+  nlpn.py          NLPNLinear — rank-restricted linear layer (core primitive)
+  enforcer.py      wrap_with_nlpn, set_privilege, save_nlpn, load_nlpn
+  policy.py        Policy, PolicyCompiler, PolicyAllocator, PolicyStack
+  semantic.py      SemanticPolicyCompiler (embedding-based matching)
+  translator.py    Plain-English → Policy via Claude
+  gdpr.py          GDPRAllocator, AuditLog, verify_audit_log
+  train.py         train_nlpn, evaluate_nlpn, calibrate_privilege
+  utils.py         get_device, load_model
+  cli.py           `comp` CLI entrypoint
+
+dashboard/
+  __init__.py      FastAPI app — uvicorn dashboard:app
+  config.py        Constants and directory paths
+  deps.py          Rate limiter and API-key auth dependency
+  schemas.py       Pydantic request models
+  helpers.py       sanitize, _persist_policy, _load_policy
+  registry.py      ModelRegistry, TrainingRegistry (background threads)
+  backends.py      Ollama, Anthropic, NLPN generation, SSE streaming
+  routers/
+    chat.py        POST /api/chat  and  POST /api/chat/stream
+    models.py      GET/POST /api/models/...
+    policies.py    CRUD /api/policies/... and POST /api/enact
+    training.py    POST/GET /api/train/...
+  static/
+    dashboard.html
+    landing.html
+    favicon.png
+
+examples/
+  demo_policy.py   End-to-end enforcement demo
+  demo_gdpr.py     GDPR tiered enforcement demo
+  demo_train.py    Training + save demo
+
+tests/             Unit + integration tests
+policies/          Example policy files
 ```
