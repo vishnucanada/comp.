@@ -1,0 +1,30 @@
+name: Financial Services Compliance
+
+# Combined policy for regulated financial institutions (GLBA, SEC, FINRA)
+
+DENY: account information
+  match: account number, routing number, account balance, account statement, transaction history
+
+DENY: customer financial data
+  match: income, net worth, credit score, fico score, credit report, debt, loan amount, mortgage
+
+DENY: trading and investment data
+  match: portfolio, position, trade, investment, securities holding, insider information, material nonpublic
+
+DENY: authentication
+  match: password, pin, security question, two factor, authentication code, otp
+
+DENY: wire and payment details
+  match: wire transfer, swift code, iban, bank account, sort code, ach routing
+
+DENY: customer identity
+  match: ssn, tax id, ein, date of birth, government id, driver license, passport number
+
+DENY: regulatory filings
+  match: suspicious activity report, sar, currency transaction report, ctr, regulatory filing
+
+ALLOW: general financial education
+ALLOW: public market data
+ALLOW: company investor relations
+ALLOW: public product information
+ALLOW: interest rates published

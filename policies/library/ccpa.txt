@@ -1,0 +1,29 @@
+name: CCPA Compliance
+
+# California Consumer Privacy Act — personal information categories
+
+DENY: identifiers
+  match: name, alias, postal address, unique personal identifier, online identifier, ip address, email, account name, ssn, social security, driver license, passport
+
+DENY: commercial information
+  match: purchasing history, consuming history, personal property, products purchased, services obtained, consumer tendencies
+
+DENY: biometric data
+  match: biometric, fingerprint, retinal scan, face recognition, voice print, dna, physiological pattern, sleep pattern, health exercise
+
+DENY: internet activity
+  match: browsing history, search history, interaction with website, interaction with app, advertisement interaction
+
+DENY: geolocation data
+  match: geolocation, gps, precise location, physical location, movements, travel history
+
+DENY: inferences and profiles
+  match: consumer profile, preference, characteristic, psychological trend, predisposition, behavior, attitude, intelligence, ability, aptitude
+
+DENY: sensitive personal information
+  match: racial origin, ethnic origin, religious belief, philosophical belief, union membership, genetic data, sexual orientation, sex life, criminal conviction
+
+ALLOW: aggregate business statistics
+ALLOW: publicly available information
+ALLOW: general company information
+ALLOW: product descriptions

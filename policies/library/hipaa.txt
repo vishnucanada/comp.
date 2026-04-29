@@ -1,0 +1,27 @@
+name: HIPAA Compliance
+
+# HIPAA Protected Health Information (PHI) — 18 identifiers under §164.514(b)
+
+DENY: patient identifiers
+  match: patient name, date of birth, dob, admission date, discharge date, death date, age over 89
+  regex: \b(0[1-9]|1[0-2])[\/\-](0[1-9]|[12]\d|3[01])[\/\-]\d{2,4}\b
+
+DENY: geographic data
+  match: address, street, city, zip code, postal code, county, precinct, geocode
+
+DENY: contact information
+  match: phone number, fax number, email address, ssn, social security, account number
+
+DENY: identifiers
+  match: medical record number, health plan number, certificate number, license number, vehicle vin, device serial, url, ip address, biometric, fingerprint, face photo, full face image
+
+DENY: diagnosis and treatment
+  match: diagnosis, treatment, prescription, medication, lab result, test result, clinical note, discharge summary, procedure, icd code, cpt code
+
+DENY: insurance information
+  match: insurance id, insurer, policy number, health plan, coverage, claims
+
+ALLOW: de-identified information
+ALLOW: aggregate statistics
+ALLOW: public health guidelines
+ALLOW: general medical education

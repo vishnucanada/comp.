@@ -1,0 +1,30 @@
+name: Healthcare Privacy
+
+# Broad healthcare privacy — covers HIPAA + state laws
+
+DENY: patient information
+  match: patient name, patient id, mrn, medical record, patient age, date of birth
+
+DENY: clinical data
+  match: diagnosis, condition, treatment, prescription, medication, allergy, lab result, test result, vital sign, blood pressure, blood type
+
+DENY: mental health
+  match: mental health, psychiatric, therapy, counseling, psychotherapy, substance abuse, addiction treatment
+
+DENY: reproductive health
+  match: pregnancy, abortion, reproductive, fertility, contraception, obstetric
+
+DENY: genetic information
+  match: genetic test, dna test, genome, genetic marker, hereditary condition
+
+DENY: insurance and billing
+  match: insurance id, insurance number, claim, billing code, npi, cpt code, icd code, copay, deductible
+
+DENY: care team information
+  match: treating physician, attending doctor, referring physician, care team, assigned nurse
+
+ALLOW: general health education
+ALLOW: public health recommendations
+ALLOW: hospital general information
+ALLOW: appointment scheduling process
+ALLOW: visiting hours

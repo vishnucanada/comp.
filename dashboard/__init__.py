@@ -19,21 +19,29 @@ from fastapi.responses import FileResponse, HTMLResponse
 from .config import ALLOWED_ORIGINS, STATIC_DIR
 from .deps import RateLimitExceeded, limiter, rate_limit_exceeded_handler
 from .routers import chat, models, policies, training
+from .routers import admin as admin_router
+from .routers import openai_compat
 
-app = FastAPI(title="comp. Admin Dashboard")
+app = FastAPI(
+    title="comp. — Nested Least-Privilege Networks",
+    description="Policy-enforced LLM deployment via rank-restricted transformer layers.",
+    version="0.2.0",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Tenant-ID"],
 )
 
 app.include_router(chat.router)
 app.include_router(models.router)
 app.include_router(policies.router)
 app.include_router(training.router)
+app.include_router(admin_router.router)
+app.include_router(openai_compat.router)
 
 
 @app.get("/favicon.png")

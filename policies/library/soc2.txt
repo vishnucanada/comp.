@@ -1,0 +1,27 @@
+name: SOC 2 Compliance
+
+# SOC 2 Trust Services Criteria — security, availability, confidentiality
+
+DENY: system credentials
+  match: password, api key, secret key, private key, access token, refresh token, oauth token, jwt, bearer token, ssh key, certificate private key
+
+DENY: infrastructure details
+  match: server ip, internal ip, network topology, firewall rules, vpn config, database host, database password, connection string, database credentials
+
+DENY: customer data
+  match: customer record, client data, user data, personal data, account data, user email, customer email, client contact
+
+DENY: security vulnerabilities
+  match: vulnerability, exploit, cve, security gap, unpatched, backdoor, zero day
+
+DENY: audit and log data
+  match: audit log, system log, access log, authentication log, security event
+
+DENY: encryption and key management
+  match: encryption key, decryption key, master key, key rotation, kms, hsm
+
+ALLOW: public documentation
+ALLOW: product features
+ALLOW: compliance certifications
+ALLOW: general security policies
+ALLOW: sla information

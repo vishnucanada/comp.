@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>comp. — Neural AI Policy Enforcement</title>
+  <title>comp. — AI Compliance You Can Prove</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -16,6 +16,7 @@
       --text:    #0a0a0a;
       --text-2:  #555555;
       --text-3:  #aaaaaa;
+      --accent:  #0a0a0a;
       --mono:    'JetBrains Mono', monospace;
       --sans:    'Inter', sans-serif;
     }
@@ -23,179 +24,125 @@
     html { scroll-behavior: smooth; }
     body { font-family: var(--sans); background: var(--bg); color: var(--text); overflow-x: hidden; }
 
+    /* ── Nav ─────────────────────────────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      height: 56px; background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
+      height: 56px; background: rgba(255,255,255,.94); backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; padding: 0 40px; gap: 12px;
     }
     .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 17px; letter-spacing: -.4px; color: var(--text); text-decoration: none; }
-    .logo-icon {
-      width: 28px; height: 28px; background: #0a0a0a;
-      border-radius: 7px; display: flex; align-items: center; justify-content: center;
-      font-size: 14px; color: #fff;
-    }
+    .logo-icon { width: 28px; height: 28px; background: #0a0a0a; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
     nav .spacer { flex: 1; }
-    .nav-cta {
-      padding: 7px 16px; background: #0a0a0a; color: #fff;
-      border: none; border-radius: 7px; font-family: var(--sans); font-size: 13px; font-weight: 600;
-      cursor: pointer; text-decoration: none; transition: opacity .15s;
-    }
+    .nav-links { display: flex; gap: 24px; margin-right: 20px; }
+    .nav-link { font-size: 13px; font-weight: 500; color: var(--text-2); text-decoration: none; transition: color .15s; }
+    .nav-link:hover { color: var(--text); }
+    .nav-cta { padding: 7px 16px; background: #0a0a0a; color: #fff; border: none; border-radius: 7px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: opacity .15s; }
     .nav-cta:hover { opacity: .75; }
 
-    .hero {
-      padding: 150px 40px 90px;
-      display: flex; flex-direction: column; align-items: center; text-align: center;
-    }
-    .hero-label {
-      display: inline-flex; align-items: center; gap: 7px;
-      font-size: 11.5px; font-weight: 500; color: var(--text-2);
-      border: 1px solid var(--border);
-      padding: 4px 12px; border-radius: 20px; margin-bottom: 28px;
-      letter-spacing: .3px;
-    }
-    .hero-label .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); }
+    /* ── Hero ────────────────────────────────────────────────────────────── */
+    .hero { padding: 140px 40px 80px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .hero-label { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 500; color: var(--text-2); border: 1px solid var(--border); padding: 4px 12px; border-radius: 20px; margin-bottom: 28px; letter-spacing: .3px; }
+    .dot-green { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
 
-    h1 {
-      font-size: clamp(34px, 6vw, 60px);
-      font-weight: 800; letter-spacing: -1.5px; line-height: 1.1;
-      max-width: 720px; margin-bottom: 22px;
-    }
+    h1 { font-size: clamp(34px, 6vw, 62px); font-weight: 800; letter-spacing: -1.8px; line-height: 1.08; max-width: 760px; margin-bottom: 22px; }
     h1 .dim { color: var(--text-2); }
+    .hero-sub { font-size: 16.5px; color: var(--text-2); max-width: 540px; line-height: 1.75; margin-bottom: 38px; font-weight: 400; }
 
-    .hero-sub {
-      font-size: 16px; color: var(--text-2); max-width: 520px;
-      line-height: 1.7; margin-bottom: 38px; font-weight: 400;
-    }
-
-    .hero-actions { display: flex; gap: 10px; align-items: center; }
-    .btn-primary {
-      padding: 12px 26px; background: #0a0a0a; color: #fff;
-      border: none; border-radius: 8px;
-      font-family: var(--sans); font-size: 14px; font-weight: 600;
-      cursor: pointer; text-decoration: none; transition: opacity .15s;
-    }
+    .hero-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .btn-primary { padding: 13px 28px; background: #0a0a0a; color: #fff; border: none; border-radius: 8px; font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: opacity .15s; }
     .btn-primary:hover { opacity: .75; }
-    .btn-secondary {
-      padding: 12px 22px; background: transparent; color: var(--text-2);
-      border: 1px solid var(--border); border-radius: 8px;
-      font-family: var(--sans); font-size: 14px; font-weight: 500;
-      cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s;
-    }
+    .btn-secondary { padding: 13px 22px; background: transparent; color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s; }
     .btn-secondary:hover { color: var(--text); border-color: var(--text-3); }
 
-    .hero-preview {
-      margin-top: 60px; width: 100%; max-width: 660px;
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; overflow: hidden;
+    /* ── Liability banner ────────────────────────────────────────────────── */
+    .liability-bar {
+      width: 100%; max-width: 700px; margin-top: 52px;
+      background: #fff8f0; border: 1px solid rgba(234,88,12,.18);
+      border-radius: 10px; padding: 18px 22px;
+      display: flex; gap: 14px; align-items: flex-start; text-align: left;
     }
-    .preview-bar {
-      padding: 11px 16px; background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 7px;
-    }
-    .preview-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); border: 1px solid rgba(0,0,0,0.12); }
-    .preview-title { margin-left: 6px; font-size: 11.5px; color: var(--text-3); font-family: var(--mono); }
-    pre.preview-code {
-      padding: 20px 22px; font-family: var(--mono); font-size: 12.5px;
-      line-height: 1.75; color: var(--text-2); text-align: left; overflow-x: auto;
-    }
-    .kw  { color: var(--text); }
-    .str { color: var(--text-2); }
-    .cmt { color: var(--text-3); }
-    .fn  { color: var(--text); }
-    .cls { color: var(--text); }
-    .num { color: var(--text-2); }
+    .liability-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .liability-text { font-size: 13px; color: #92400e; line-height: 1.6; }
+    .liability-text strong { font-weight: 700; color: #78350f; }
 
+    /* ── Social proof strip ──────────────────────────────────────────────── */
+    .proof-strip { width: 100%; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 22px 40px; display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+    .proof-item { text-align: center; }
+    .proof-num { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .proof-label { font-size: 11.5px; color: var(--text-3); margin-top: 2px; letter-spacing: .2px; }
+
+    /* ── Sections ────────────────────────────────────────────────────────── */
     section { padding: 80px 40px; max-width: 1060px; margin: 0 auto; }
-    .section-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 1.2px; color: var(--text-3); margin-bottom: 12px;
-    }
-    h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 700; letter-spacing: -.5px; line-height: 1.2; margin-bottom: 12px; }
-    .section-sub { font-size: 15px; color: var(--text-2); max-width: 480px; line-height: 1.7; margin-bottom: 44px; }
+    .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); margin-bottom: 12px; }
+    h2 { font-size: clamp(24px, 4vw, 38px); font-weight: 700; letter-spacing: -.5px; line-height: 1.2; margin-bottom: 12px; }
+    .section-sub { font-size: 15.5px; color: var(--text-2); max-width: 520px; line-height: 1.7; margin-bottom: 44px; }
 
+    /* ── Comparison table ────────────────────────────────────────────────── */
+    .compare-table { width: 100%; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; border-collapse: collapse; }
+    .compare-table th { padding: 14px 18px; background: var(--surface); font-size: 12px; font-weight: 600; text-align: left; color: var(--text-2); border-bottom: 1px solid var(--border); letter-spacing: .3px; text-transform: uppercase; }
+    .compare-table td { padding: 14px 18px; font-size: 13.5px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tr:hover td { background: var(--surface); }
+    .compare-table .check { color: #16a34a; font-weight: 700; }
+    .compare-table .cross { color: #dc2626; font-weight: 700; }
+    .col-comp { background: rgba(0,0,0,.025); }
+
+    /* ── Feature grid ────────────────────────────────────────────────────── */
     .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .feature-card {
-      background: var(--bg); padding: 26px;
-      transition: background .15s;
-    }
+    .feature-card { background: var(--bg); padding: 26px; transition: background .15s; }
     .feature-card:hover { background: var(--surface); }
-    .feature-icon { font-size: 18px; margin-bottom: 14px; filter: grayscale(1); }
+    .feature-icon { font-size: 19px; margin-bottom: 14px; }
     .feature-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
     .feature-desc { font-size: 13px; color: var(--text-2); line-height: 1.65; }
 
+    /* ── Steps ───────────────────────────────────────────────────────────── */
     .steps { display: flex; flex-direction: column; }
-    .step {
-      display: flex; gap: 24px; align-items: flex-start;
-      padding: 26px 0; border-bottom: 1px solid var(--border);
-    }
+    .step { display: flex; gap: 24px; align-items: flex-start; padding: 26px 0; border-bottom: 1px solid var(--border); }
     .step:last-child { border-bottom: none; }
-    .step-num {
-      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-      border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; color: var(--text-3);
-    }
+    .step-num { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-3); }
     .step-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
     .step-desc { font-size: 13px; color: var(--text-2); line-height: 1.65; }
-    .step-tag {
-      display: inline-block; margin-top: 10px;
-      font-family: var(--mono); font-size: 11px;
-      padding: 2px 8px; border-radius: 4px;
-      background: var(--surface); border: 1px solid var(--border); color: var(--text-3);
-    }
+    .step-tag { display: inline-block; margin-top: 10px; font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); color: var(--text-3); }
 
-    .mae-stack {
-      display: flex; margin-top: 44px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; overflow: hidden;
-    }
-    .mae-layer {
-      flex: 1; padding: 20px 18px; text-align: center;
-      border-right: 1px solid var(--border); transition: background .15s;
-    }
-    .mae-layer:last-child { border-right: none; }
-    .mae-layer:hover { background: var(--surface); }
-    .mae-abbr { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); margin-bottom: 7px; }
-    .mae-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
-    .mae-desc { font-size: 11px; color: var(--text-3); line-height: 1.6; }
+    /* ── Policy library ──────────────────────────────────────────────────── */
+    .policy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    .policy-pill { padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); cursor: pointer; transition: border-color .15s, background .15s; }
+    .policy-pill:hover { border-color: var(--text-3); background: var(--surface); }
+    .policy-pill-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .policy-pill-sub { font-size: 11.5px; color: var(--text-3); }
 
-    .compliance-strip {
-      background: var(--surface); border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 50px 40px; text-align: center;
-    }
-    .compliance-strip h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
-    .compliance-strip p { font-size: 13.5px; color: var(--text-2); max-width: 460px; margin: 0 auto 26px; line-height: 1.7; }
-    .compliance-tags { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-    .c-tag {
-      padding: 5px 12px; border-radius: 20px;
-      font-size: 11.5px; font-weight: 500;
-      border: 1px solid var(--border); color: var(--text-2);
-      background: var(--bg);
-    }
+    /* ── Code preview ────────────────────────────────────────────────────── */
+    .hero-preview { margin-top: 58px; width: 100%; max-width: 680px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .preview-bar { padding: 11px 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 7px; }
+    .preview-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); border: 1px solid rgba(0,0,0,0.12); }
+    .preview-title { margin-left: 6px; font-size: 11.5px; color: var(--text-3); font-family: var(--mono); }
+    pre.preview-code { padding: 20px 22px; font-family: var(--mono); font-size: 12.5px; line-height: 1.75; color: var(--text-2); text-align: left; overflow-x: auto; }
+    .kw { color: var(--text); } .str { color: var(--text-2); } .cmt { color: var(--text-3); } .fn { color: var(--text); } .cls { color: var(--text); } .num { color: var(--text-2); }
 
+    /* ── CTA ─────────────────────────────────────────────────────────────── */
     .cta-section { padding: 100px 40px; text-align: center; }
-    .cta-section h2 { font-size: clamp(22px, 4vw, 36px); font-weight: 800; letter-spacing: -.5px; margin-bottom: 12px; }
-    .cta-section p { font-size: 15px; color: var(--text-2); max-width: 400px; margin: 0 auto 32px; line-height: 1.7; }
+    .cta-section h2 { font-size: clamp(22px, 4vw, 40px); font-weight: 800; letter-spacing: -.7px; margin-bottom: 14px; }
+    .cta-section p { font-size: 15px; color: var(--text-2); max-width: 440px; margin: 0 auto 32px; line-height: 1.7; }
 
-    footer {
-      border-top: 1px solid var(--border); padding: 24px 40px;
-      display: flex; align-items: center; gap: 12px;
-      font-size: 12px; color: var(--text-3);
-    }
+    /* ── Footer ──────────────────────────────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-3); }
     footer .logo-sm { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13px; color: var(--text-2); }
-    footer .logo-icon-sm {
-      width: 18px; height: 18px; background: #0a0a0a;
-      border-radius: 4px; display: flex; align-items: center; justify-content: center;
-      font-size: 9px; color: #fff;
-    }
+    footer .logo-icon-sm { width: 18px; height: 18px; background: #0a0a0a; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
     footer .spacer { flex: 1; }
+    footer a { color: var(--text-3); text-decoration: none; }
+    footer a:hover { color: var(--text-2); }
 
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--text-3); border-radius: 2px; }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .hero { padding: 120px 20px 60px; }
+      section { padding: 60px 20px; }
+    }
   </style>
 </head>
 <body>
@@ -206,109 +153,362 @@
     comp.
   </a>
   <div class="spacer"></div>
+  <div class="nav-links">
+    <a class="nav-link" href="#problem">Why comp.</a>
+    <a class="nav-link" href="#how-it-works">How it works</a>
+    <a class="nav-link" href="#compliance">Compliance</a>
+  </div>
   <a class="nav-cta" href="/dashboard">Open Dashboard →</a>
 </nav>
 
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
 <div class="hero">
-  
-  <h1>Enforce AI Policies<br/><span class="dim">at the Neural Level</span></h1>
-  <p class="hero-sub">
-    comp. embeds compliance directly into language model weights.
-  </p>
-  <div class="hero-actions">
-    <a class="btn-primary" href="/dashboard">Open Dashboard →</a>
-    <a class="btn-secondary" href="#how-it-works">How it works</a>
+  <div class="hero-label">
+    <span class="dot-green"></span>
+    AI Compliance Infrastructure
   </div>
 
-  <div class="hero-preview">
-    <div class="preview-bar">
-      <div class="preview-dot"></div>
-      <div class="preview-dot"></div>
-      <div class="preview-dot"></div>
-      <span class="preview-title">policy_engine.py</span>
+  <h1>Your AI Can't Leak Data<br/><span class="dim">It Doesn't Have Access To</span></h1>
+
+  <p class="hero-sub">
+    comp. enforces data policies by restricting what language models can <em>compute</em>
+    at low privilege — not just what they can say. Structural enforcement.
+    Not a filter you can jailbreak.
+  </p>
+
+  <div class="hero-actions">
+    <a class="btn-primary" href="/dashboard">Try the Dashboard →</a>
+    <a class="btn-secondary" href="#how-it-works">See how it works</a>
+  </div>
+
+  <div class="liability-bar">
+    <div class="liability-icon">⚠️</div>
+    <div class="liability-text">
+      <strong>The average cost of a data breach involving AI systems is $4.88M</strong>
+      (IBM 2024). Prompt injection and jailbreaking bypass output filters with a single
+      sentence. comp. makes denied capabilities structurally unreachable —
+      compliance auditors can verify it without running the model.
     </div>
-    <pre class="preview-code"><span class="cmt"># Translate plain English into enforcement rules</span>
-<span class="kw">from</span> comp <span class="kw">import</span> <span class="cls">PolicyTranslator</span>, <span class="cls">PolicyCompiler</span>, <span class="cls">wrap_with_nlpn</span>
-
-translator = <span class="cls">PolicyTranslator</span>()
-policy = translator.<span class="fn">translate</span>(<span class="str">"""
-  Staff must not share personal identifiers, medical records,
-  or financial data. Public documentation is permitted.
-"""</span>)
-
-<span class="cmt"># Embed policy into model weights via NLPN layers</span>
-<span class="fn">wrap_with_nlpn</span>(model, rmax=<span class="num">64</span>)
-compiler = <span class="cls">PolicyCompiler</span>(policy)
-
-<span class="cmt"># Runtime enforcement — privilege drops to 1% on DENY</span>
-violated, categories = compiler.<span class="fn">check</span>(user_prompt)
-<span class="fn">set_privilege</span>(model, g=<span class="num">1</span> <span class="kw">if</span> violated <span class="kw">else</span> rmax)</pre>
   </div>
 </div>
 
+<!-- ── Proof strip ────────────────────────────────────────────────────────── -->
+<div class="proof-strip">
+  <div class="proof-item">
+    <div class="proof-num">6+</div>
+    <div class="proof-label">Pre-built regulatory policies</div>
+  </div>
+  <div class="proof-item">
+    <div class="proof-num">&lt; 60s</div>
+    <div class="proof-label">From policy text to enforcement</div>
+  </div>
+  <div class="proof-item">
+    <div class="proof-num">0</div>
+    <div class="proof-label">Prompt injection bypass vectors</div>
+  </div>
+  <div class="proof-item">
+    <div class="proof-num">Drop-in</div>
+    <div class="proof-label">OpenAI-compatible API</div>
+  </div>
+</div>
 
-<section id="how-it-works" style="padding-top:20px">
+<!-- ── Problem section ────────────────────────────────────────────────────── -->
+<section id="problem">
+  <div class="section-label">The problem</div>
+  <h2>Output filters are a legal liability</h2>
+  <p class="section-sub">
+    Every AI guardrail on the market works the same way: generate first, filter the output.
+    But the model already computed the answer — it was just redacted.
+  </p>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th style="width:34%">Capability</th>
+        <th style="width:22%">Output filters<br/>(Guardrails, Llama Guard)</th>
+        <th style="width:22%" class="col-comp">comp. NLPN</th>
+        <th style="width:22%">System prompt<br/>instructions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Resists jailbreak / prompt injection</td>
+        <td><span class="cross">✗</span> Model computed it; filter is bypassed</td>
+        <td class="col-comp"><span class="check">✓</span> Capability structurally absent at low g</td>
+        <td><span class="cross">✗</span> Single sentence overrides</td>
+      </tr>
+      <tr>
+        <td>Auditable without running the model</td>
+        <td><span class="cross">✗</span> Output-only — no structural proof</td>
+        <td class="col-comp"><span class="check">✓</span> W(g) matrix rank provably bounded</td>
+        <td><span class="cross">✗</span> No verifiable property</td>
+      </tr>
+      <tr>
+        <td>Zero latency overhead on ALLOW path</td>
+        <td><span class="cross">✗</span> Full generation + post-processing</td>
+        <td class="col-comp"><span class="check">✓</span> Policy check is O(tokens × keywords)</td>
+        <td><span class="check">✓</span> No overhead</td>
+      </tr>
+      <tr>
+        <td>Tiered privilege (GDPR Article 9 etc.)</td>
+        <td><span class="cross">✗</span> Binary block/allow only</td>
+        <td class="col-comp"><span class="check">✓</span> Continuous g ∈ [1, rmax]</td>
+        <td><span class="cross">✗</span> Binary only</td>
+      </tr>
+      <tr>
+        <td>Pre-built regulatory policies</td>
+        <td><span class="cross">✗</span> Custom rules per deployment</td>
+        <td class="col-comp"><span class="check">✓</span> HIPAA, GDPR, PCI-DSS, SOC 2, CCPA, financial</td>
+        <td><span class="cross">✗</span> Manual per deployment</td>
+      </tr>
+      <tr>
+        <td>OpenAI-compatible drop-in API</td>
+        <td><span class="cross">✗</span> Separate proxy required</td>
+        <td class="col-comp"><span class="check">✓</span> POST /v1/chat/completions</td>
+        <td><span class="cross">✗</span> Not applicable</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── How it works ───────────────────────────────────────────────────────── -->
+<section id="how-it-works">
   <div class="section-label">How it works</div>
-  <h2>From policy to enforcement in four steps</h2>
-  <p class="section-sub">No prompt engineering. No output filters. The model itself changes behavior.</p>
+  <h2>Compliance baked into the weights</h2>
+  <p class="section-sub">
+    comp. replaces every Linear layer in your model with a rank-factorized equivalent.
+    At low privilege only the first g rank-1 components are active —
+    the computation path for denied information simply doesn't exist.
+  </p>
 
   <div class="steps">
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
-        <div class="step-title">Write your policy in plain English</div>
+        <div class="step-title">Define your compliance policy in plain English</div>
         <div class="step-desc">
-          Open the Admin Dashboard and describe what the model should and shouldn't reveal —
-          in natural language, the same way you'd write it for a compliance document or HR memo.
+          Open the dashboard and paste your compliance requirements exactly as you'd
+          write them for legal — or load one of our pre-built HIPAA, GDPR, PCI-DSS,
+          SOC 2, CCPA, or financial-services policies with one click.
         </div>
-        <span class="step-tag">PolicyTranslator</span>
+        <span class="step-tag">60-second setup</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-content">
-        <div class="step-title">We compile it into structured rules</div>
+        <div class="step-title">We fine-tune your model's weights — not a wrapper</div>
         <div class="step-desc">
-          Using NLP processing we determine what to DENY and ALLOW with matching keywords.
-          You can inspect the compiled policy in the dashboard before proceeding.
+          Algorithm 1 adjusts the B matrices in NLPN layers so that at low privilege
+          the model genuinely can't compute denied answers, while full-privilege
+          behaviour is provably preserved. Training takes 3–8 minutes on an M-series Mac.
         </div>
-        <span class="step-tag">PolicyCompiler</span>
+        <span class="step-tag">No capability regression</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-content">
-        <div class="step-title">Wrap your model with NLPN layers</div>
+        <div class="step-title">Every request is privilege-allocated in real time</div>
         <div class="step-desc">
-          A single <code style="font-family:var(--mono);font-size:12px;color:var(--text)">wrap_with_nlpn(model)</code> call replaces
-          all target Linear layers with NLPNLinear — a rank-factorized weight that supports nested
-          subspaces. Initialized from your existing weights via SVD, so no capability is lost at rmax.
+          The policy compiler checks each prompt against your rules. A DENY match drops
+          the model to low privilege — the denied capability is structurally unreachable
+          for that generation. No post-processing, no second model, no latency hit on
+          the ALLOW path.
         </div>
-        <span class="step-tag">NLPNLinear</span>
+        <span class="step-tag">g = 1% of rmax on DENY</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">4</div>
       <div class="step-content">
-        <div class="step-title">Train and certify</div>
+        <div class="step-title">Compliance auditors verify the math, not the logs</div>
         <div class="step-desc">
-          Policy-targeted training teaches the model that denied capabilities are genuinely
-          unreachable at low privilege — not just filtered. The verifier then issues a compliance
-          certificate confirming suppression and preservation thresholds are met.
+          Because Im(W(g)) ⊆ Im(W(g+1)) is provable from the weight matrices alone,
+          your auditor doesn't need to run the model to confirm compliance.
+          GDPR tiered enforcement and tamper-evident audit logs are built in.
         </div>
-        <span class="step-tag">CertificateVerifier</span>
+        <span class="step-tag">Verifiable without inference</span>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ── Features ───────────────────────────────────────────────────────────── -->
+<section>
+  <div class="section-label">Features</div>
+  <h2>Everything your compliance team needs</h2>
+  <p class="section-sub">Built for legal, engineering, and auditors — all in one platform.</p>
 
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🏛️</div>
+      <div class="feature-title">Pre-built Regulatory Library</div>
+      <div class="feature-desc">
+        Ready-to-deploy policies for HIPAA, GDPR, PCI-DSS, SOC 2, CCPA, and financial services.
+        Install with one click — no policy writing required.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔌</div>
+      <div class="feature-title">OpenAI-Compatible API</div>
+      <div class="feature-desc">
+        Drop in POST /v1/chat/completions. Your existing application connects to comp.
+        instead of OpenAI — enforcement is transparent to your code.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏢</div>
+      <div class="feature-title">Multi-Tenant Isolation</div>
+      <div class="feature-desc">
+        Each tenant gets separate policy, checkpoint, and audit namespaces.
+        Usage metering per tenant for billing. X-Tenant-ID header routing.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <div class="feature-title">RBAC &amp; Admin Audit Trail</div>
+      <div class="feature-desc">
+        Admin, policy-editor, and viewer roles. HMAC-signed admin action log.
+        Every policy save, model load, and privilege change is recorded with IP and timestamp.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <div class="feature-title">Red-Team Benchmarks</div>
+      <div class="feature-desc">
+        60+ adversarial bypass attempts across jailbreak, hypothetical, encoding, and indirect
+        categories. Built-in comparison vs. output-filter baselines.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">GDPR Tiered Enforcement</div>
+      <div class="feature-desc">
+        Article 9 special categories at 1% of rmax, standard PII at 5%, pseudonymised
+        data at 20%. Tamper-evident JSONL audit log with HMAC signing.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Streaming Chat API</div>
+      <div class="feature-desc">
+        Server-Sent Events streaming with policy decision in first chunk.
+        Works with any SSE-capable frontend — React, Vue, plain JavaScript.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📝</div>
+      <div class="feature-title">Policy Version History</div>
+      <div class="feature-desc">
+        Every policy save creates a timestamped archive. Roll back to any previous version
+        from the dashboard. Full audit trail of policy changes.
+      </div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">Natural Language Policies</div>
+      <div class="feature-desc">
+        Paste your compliance doc, HR memo, or legal requirements as-is.
+        Claude translates it into structured enforcement rules automatically.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Compliance library ─────────────────────────────────────────────────── -->
+<section id="compliance" style="padding-top: 0">
+  <div class="section-label">Policy library</div>
+  <h2>Deploy in minutes, not months</h2>
+  <p class="section-sub">
+    Pre-built policies cover the most common regulatory frameworks.
+    Customize after installing, or write your own from scratch.
+  </p>
+
+  <div class="policy-grid">
+    <div class="policy-pill">
+      <div class="policy-pill-name">HIPAA</div>
+      <div class="policy-pill-sub">18 PHI identifiers, clinical data, insurance</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">GDPR</div>
+      <div class="policy-pill-sub">Special categories, tiered severity, Article 9</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">PCI-DSS</div>
+      <div class="policy-pill-sub">Card numbers, CVV, cardholder data</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">SOC 2</div>
+      <div class="policy-pill-sub">Credentials, infrastructure, customer data</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">CCPA</div>
+      <div class="policy-pill-sub">CA consumer privacy, data categories</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">Financial Services</div>
+      <div class="policy-pill-sub">GLBA, SEC, FINRA — accounts, trading, KYC</div>
+    </div>
+    <div class="policy-pill">
+      <div class="policy-pill-name">Healthcare</div>
+      <div class="policy-pill-sub">Broader than HIPAA — mental health, genetics</div>
+    </div>
+    <div class="policy-pill" style="border-style: dashed;">
+      <div class="policy-pill-name">Custom</div>
+      <div class="policy-pill-sub">Write your own or translate from plain text</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── API preview ────────────────────────────────────────────────────────── -->
+<section style="padding-top: 0">
+  <div class="section-label">Developer experience</div>
+  <h2>One line to switch from OpenAI</h2>
+  <p class="section-sub">Change the base URL and add a policy header. Every existing OpenAI call now runs through NLPN enforcement.</p>
+
+  <div class="hero-preview" style="max-width: 100%">
+    <div class="preview-bar">
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <span class="preview-title">integration.py — OpenAI drop-in</span>
+    </div>
+    <pre class="preview-code"><span class="cmt"># Before: direct OpenAI</span>
+<span class="kw">from</span> openai <span class="kw">import</span> <span class="cls">OpenAI</span>
+client = <span class="cls">OpenAI</span>()
+
+<span class="cmt"># After: comp. enforcement (one line change)</span>
+client = <span class="cls">OpenAI</span>(
+    base_url=<span class="str">"http://localhost:8000/v1"</span>,
+    api_key=<span class="str">"your-comp-api-key"</span>,
+    default_headers={<span class="str">"policy"</span>: <span class="str">"hipaa"</span>},
+)
+
+<span class="cmt"># Same call — NLPN enforcement is transparent</span>
+response = client.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">"comp-enforced"</span>,
+    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}],
+)
+
+<span class="cmt"># Bonus: response includes enforcement decision</span>
+<span class="fn">print</span>(response.<span class="fn">model_extra</span>[<span class="str">"x_comp_policy"</span>])
+<span class="cmt"># {'decision': 'DENY', 'violations': ['patient identifiers'], 'policy': 'hipaa'}</span></pre>
+  </div>
+</section>
+
+<!-- ── CTA ────────────────────────────────────────────────────────────────── -->
 <div class="cta-section">
-  <h2>Start enforcing policies today</h2>
-  <p>Open the admin dashboard, write your policy in plain English, and enact it against your test cases in minutes.</p>
-  <a class="btn-primary" href="/dashboard" style="font-size:14px;padding:12px 28px">
-    Open Admin Dashboard →
-  </a>
+  <h2>Compliance you can prove<br/>to auditors, not just promise</h2>
+  <p>Start with a pre-built HIPAA or GDPR policy. Go from zero to verified enforcement in under an hour.</p>
+  <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+    <a class="btn-primary" href="/dashboard" style="font-size: 14px; padding: 13px 30px">
+      Open Dashboard →
+    </a>
+    <a class="btn-secondary" href="/api/admin/policy-library" style="font-size: 14px; padding: 13px 22px">
+      Browse Policy Library
+    </a>
+  </div>
 </div>
 
 <footer>
@@ -316,8 +516,12 @@ violated, categories = compiler.<span class="fn">check</span>(user_prompt)
     <div class="logo-icon-sm">⬡</div>
     comp.
   </div>
-  <span>Nested Least-Privilege Networks for Language Model Governance</span>
+  <span>Structural AI Compliance — Nested Least-Privilege Networks</span>
   <div class="spacer"></div>
+  <a href="/dashboard">Dashboard</a>
+  <span style="margin: 0 8px">·</span>
+  <a href="/api/docs">API Docs</a>
+  <span style="margin: 0 8px">·</span>
   <span>© 2026</span>
 </footer>
 

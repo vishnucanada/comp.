@@ -24,6 +24,10 @@ from .train    import (
     train_nlpn, build_deny_examples, build_adversarial_examples, TrainConfig,
     evaluate_nlpn, calibrate_privilege,
 )
+from .benchmark import (
+    run_nlpn_benchmark, run_filter_baseline, compare as benchmark_compare,
+    build_benchmark_cases, BenchmarkResult,
+)
 
 __all__ = [
     # Core layer
@@ -42,4 +46,7 @@ __all__ = [
     # Training
     "train_nlpn", "build_deny_examples", "build_adversarial_examples",
     "TrainConfig", "evaluate_nlpn", "calibrate_privilege",
+    # Benchmarks
+    "run_nlpn_benchmark", "run_filter_baseline", "benchmark_compare",
+    "build_benchmark_cases", "BenchmarkResult",
 ]

@@ -1,0 +1,30 @@
+name: PCI-DSS Compliance
+
+# Payment Card Industry Data Security Standard
+
+DENY: card numbers
+  match: card number, credit card, debit card, pan, primary account number, cardholder number
+  regex: \b4[0-9]{12}(?:[0-9]{3})?\b
+  regex: \b5[1-5][0-9]{14}\b
+  regex: \b3[47][0-9]{13}\b
+  regex: \b3(?:0[0-5]|[68][0-9])[0-9]{11}\b
+
+DENY: card security codes
+  match: cvv, cvc, cvv2, cid, security code, card verification
+
+DENY: cardholder data
+  match: cardholder name, expiration date, expiry date, billing address, card pin, pin number
+
+DENY: authentication credentials
+  match: password, passphrase, private key, secret key, authentication token, encryption key
+
+DENY: transaction data
+  match: transaction id, authorization code, settlement data, track data, magnetic stripe
+
+DENY: network and system internals
+  match: firewall config, system password, admin credentials, server password, database password
+
+ALLOW: payment process documentation
+ALLOW: public compliance documentation
+ALLOW: customer service general information
+ALLOW: refund and return policy
