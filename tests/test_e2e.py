@@ -184,12 +184,13 @@ def test_wrap_replaces_target_layers(model):
 def test_wrap_preserves_output_at_rmax():
     base   = _TinyLM()
     nlpn   = _TinyLM()  # same seed → same weights
-    wrap_with_nlpn(nlpn, rmax=8, target_modules=["down_proj", "up_proj", "q_proj"])
+    # 16×16 Linear layers have full rank 16 — rmax must match for exact reconstruction
+    wrap_with_nlpn(nlpn, rmax=16, target_modules=["down_proj", "up_proj", "q_proj"])
     nlpn.eval()
     inp = torch.tensor([[5, 10, 15]])
     with torch.no_grad():
         out_base = base(inp).logits
-        set_privilege(nlpn, 8)
+        set_privilege(nlpn, 16)
         out_nlpn = nlpn(inp).logits
     assert torch.allclose(out_base, out_nlpn, atol=1e-4)
 

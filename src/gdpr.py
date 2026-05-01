@@ -128,7 +128,7 @@ class GDPRAllocator:
     ):
         self.rules = [r for r in rules if r.action == "DENY"]
         self.tokenizer = tokenizer
-        self.audit_log = audit_log or AuditLog()
+        self.audit_log = audit_log if audit_log is not None else AuditLog()
         self.severity_privilege = severity_privilege or SEVERITY_PRIVILEGE
 
     def allocate(self, model, input_ids: torch.Tensor, rmax: int, **_) -> int:
