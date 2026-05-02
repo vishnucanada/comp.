@@ -10,15 +10,19 @@ Tiered privilege maps GDPR severity to g:
 Every allocation is recorded to the audit log (Article 30 obligation).
 """
 from __future__ import annotations
+
 import hashlib
 import hmac as _hmac
 import json
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
+
 import torch
-from .policy import Policy, PolicyRule, _parse
-from .enforcer import set_privilege, get_rmax
+
+from .enforcer import get_rmax, set_privilege
+from .policy import PolicyRule, _parse
+
 
 @dataclass
 class GDPRRule(PolicyRule):

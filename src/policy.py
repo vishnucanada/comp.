@@ -26,10 +26,12 @@ DENY: category label
 ALLOW: category label
 """
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
+
 import torch
 
 
@@ -75,11 +77,11 @@ class Policy:
         return [r for r in self.rules if r.action == "ALLOW"]
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "Policy":
+    def from_file(cls, path: str | Path) -> Policy:
         return _parse(Path(path).read_text())
 
     @classmethod
-    def from_text(cls, text: str) -> "Policy":
+    def from_text(cls, text: str) -> Policy:
         return _parse(text)
 
     def to_text(self) -> str:
@@ -200,7 +202,7 @@ class PolicyAllocator:
 
     def generate(self, model, input_ids, attention_mask=None, rmax=None,
                  history=None, **generate_kwargs):
-        from .enforcer import set_privilege, get_rmax
+        from .enforcer import get_rmax, set_privilege
         if rmax is None:
             rmax = get_rmax(model)
         g = self.allocate(model, input_ids, rmax, history=history)

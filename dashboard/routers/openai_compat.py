@@ -8,20 +8,18 @@ Supported request fields: model, messages, max_tokens, temperature, stream.
 Returns OpenAI-format response with extra `x_comp_policy` field.
 """
 import json
-import os
 import time
 import uuid
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..backends import get_response, nlpn_generate, ollama_stream_to_queue
-from ..config import OLLAMA_PREFERRED
+from ..deps import limiter
 from ..helpers import policy_check, sanitize
 from ..registry import model_registry
-from ..deps import limiter
 
 router = APIRouter(prefix="/v1")
 
@@ -144,6 +142,7 @@ async def chat_completions(request: Request, req: OAIRequest):
     if req.stream:
         import queue as _queue
         from threading import Thread
+
         from ..backends import ollama_model
 
         ollama = ollama_model()

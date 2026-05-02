@@ -1,9 +1,12 @@
 """Enforcement operator: wrap a model with NLPN layers and control privilege."""
 from __future__ import annotations
+
 import json
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
+
 from .nlpn import NLPNLinear
 
 # MLP and attention projection names across common architectures.

@@ -9,8 +9,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from ..backends import (
-    anthropic_chat, get_response,
-    nlpn_generate, ollama_model, ollama_stream_to_queue,
+    anthropic_chat,
+    get_response,
+    nlpn_generate,
+    ollama_model,
+    ollama_stream_to_queue,
 )
 from ..config import OLLAMA_PREFERRED
 from ..deps import limiter

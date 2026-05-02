@@ -21,17 +21,16 @@ Compute note:
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 
-from .enforcer import set_privilege, get_rmax
+from .enforcer import get_rmax, set_privilege
 from .nlpn import NLPNLinear
 from .policy import Policy
-
 
 _REFUSAL = "I'm sorry, I can't help with that."
 

@@ -8,8 +8,10 @@ Extracts DENY/ALLOW rules from plain English using rule-based NLP:
   4. Build PolicyRule objects with runtime keywords and regex patterns
 """
 from __future__ import annotations
+
 import re
 from pathlib import Path
+
 from .policy import Policy, PolicyRule
 
 # ── Intent detection ──────────────────────────────────────────────────────────

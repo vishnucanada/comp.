@@ -3,7 +3,6 @@ import json
 import os
 import threading
 import time
-from pathlib import Path
 
 from fastapi import HTTPException, Request
 
@@ -97,9 +96,8 @@ def log_admin_action(
         ).hexdigest()
         entry["_hmac"] = sig
 
-    with _log_lock:
-        with _ADMIN_LOG.open("a") as f:
-            f.write(json.dumps(entry) + "\n")
+    with _log_lock, _ADMIN_LOG.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
 
 
 def get_admin_log(limit: int = 100) -> list[dict]:

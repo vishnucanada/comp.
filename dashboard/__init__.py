@@ -18,9 +18,8 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from .config import ALLOWED_ORIGINS, STATIC_DIR
 from .deps import RateLimitExceeded, limiter, rate_limit_exceeded_handler
-from .routers import chat, models, policies, training
 from .routers import admin as admin_router
-from .routers import openai_compat
+from .routers import chat, models, openai_compat, policies, training
 
 app = FastAPI(
     title="comp. — Nested Least-Privilege Networks",

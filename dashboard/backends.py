@@ -3,13 +3,14 @@ import json
 import os
 import queue
 import urllib.request as _urllib
-from threading import Thread
 
 import torch
 
 from .config import (
-    ANTHROPIC_MAX_TOK, ANTHROPIC_MODEL,
-    OLLAMA_BASE_URL, OLLAMA_PREFERRED,
+    ANTHROPIC_MAX_TOK,
+    ANTHROPIC_MODEL,
+    OLLAMA_BASE_URL,
+    OLLAMA_PREFERRED,
 )
 from .helpers import _load_policy
 

@@ -1,9 +1,9 @@
 """Admin routes: RBAC, usage metering, audit log, policy library."""
 from fastapi import APIRouter, Depends, Request
 
+from ..config import ROOT
 from ..rbac import get_admin_log, log_admin_action, require_admin, require_write_access
 from ..tenancy import get_tenant_id, get_usage
-from ..config import ROOT
 
 router = APIRouter(prefix="/api/admin")
 
@@ -57,8 +57,8 @@ async def install_library_policy(
 ):
     """Copy a library policy into the tenant's active policies directory."""
     import re
+
     from ..helpers import _persist_policy
-    from ..config import POLICIES_DIR
 
     safe = re.sub(r"[^a-zA-Z0-9_-]", "", policy_id)
     f = _LIBRARY_DIR / f"{safe}.txt"

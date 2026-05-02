@@ -13,12 +13,17 @@ import torch
 import torch.nn as nn
 
 import src
-from src.policy import Policy, PolicyCompiler, PolicyAllocator
-from src.enforcer import wrap_with_nlpn, set_privilege, save_nlpn, load_nlpn, detect_rmax
-from src.gdpr import GDPRPolicyParser, GDPRAllocator, AuditLog, GDPRRule, verify_audit_log
-from src.train import TrainConfig, build_deny_examples, evaluate_nlpn, calibrate_privilege, _DEFAULT_ALLOW
+from src.enforcer import load_nlpn, save_nlpn, set_privilege, wrap_with_nlpn
+from src.gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
+from src.policy import Policy, PolicyAllocator, PolicyCompiler
+from src.train import (
+    _DEFAULT_ALLOW,
+    TrainConfig,
+    build_deny_examples,
+    calibrate_privilege,
+    evaluate_nlpn,
+)
 from src.translator import PolicyTranslator
-
 
 # ── Minimal fake model and tokenizer ─────────────────────────────────────────
 

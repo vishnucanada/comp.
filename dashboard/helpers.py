@@ -5,7 +5,7 @@ import time
 
 from fastapi import HTTPException
 
-from .config import POLICIES_DIR, HISTORY_DIR
+from .config import HISTORY_DIR, POLICIES_DIR
 
 
 def sanitize(name: str) -> str:

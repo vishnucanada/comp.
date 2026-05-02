@@ -1,7 +1,8 @@
 """Shared model-loading utilities."""
 from __future__ import annotations
+
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 DEFAULT_MODEL_ID = "Qwen/Qwen2.5-0.5B"
 

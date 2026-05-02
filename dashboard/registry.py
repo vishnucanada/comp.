@@ -1,7 +1,6 @@
 """Model and training job registries — thread-safe background workers."""
 import json
 import queue
-from pathlib import Path
 from threading import Lock, Thread
 
 from .config import CHECKPOINTS_DIR
@@ -38,8 +37,8 @@ class ModelRegistry:
 
     def _load(self, name: str) -> None:
         try:
-            from src.utils import load_model
             from src.enforcer import detect_rmax, load_nlpn, wrap_with_nlpn
+            from src.utils import load_model
 
             ckpt = CHECKPOINTS_DIR / name
             cfg  = json.loads((ckpt / "nlpn_config.json").read_text())
@@ -93,7 +92,9 @@ class TrainingRegistry:
             import src
             from src.enforcer import detect_rmax, wrap_with_nlpn
             from src.train import (
-                TrainConfig, build_adversarial_examples, build_deny_examples,
+                TrainConfig,
+                build_adversarial_examples,
+                build_deny_examples,
             )
             from src.utils import load_model
 
