@@ -6,7 +6,6 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .nlpn import NLPNLinear
 
@@ -35,6 +34,8 @@ def load_model(
     be wrapped with wrap_with_nlpn — quantised layers replace nn.Linear before
     wrapping can target them.
     """
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
     if device is None:
         device = get_device()
 

@@ -37,8 +37,7 @@ class ModelRegistry:
 
     def _load(self, name: str) -> None:
         try:
-            from src.enforcer import detect_rmax, load_nlpn, wrap_with_nlpn
-            from src.utils import load_model
+            from src.enforcer import detect_rmax, load_model, load_nlpn, wrap_with_nlpn
 
             ckpt = CHECKPOINTS_DIR / name
             cfg  = json.loads((ckpt / "nlpn_config.json").read_text())
@@ -90,13 +89,8 @@ class TrainingRegistry:
         q = self._queues[name]
         try:
             import src
-            from src.enforcer import detect_rmax, wrap_with_nlpn
-            from src.train import (
-                TrainConfig,
-                build_adversarial_examples,
-                build_deny_examples,
-            )
-            from src.utils import load_model
+            from src.enforcer import detect_rmax, load_model, wrap_with_nlpn
+            from src.train import TrainConfig, build_deny_examples
 
             policy = _load_policy(name)
             if policy is None:
@@ -117,8 +111,6 @@ class TrainingRegistry:
             wrap_with_nlpn(model, rmax=detect_rmax(model))
 
             deny_ex = build_deny_examples(policy)
-            if config.get("adversarial"):
-                deny_ex += build_adversarial_examples(policy)
 
             def on_step(epoch, step, loss):
                 q.put({"type": "progress", "epoch": epoch, "step": step,

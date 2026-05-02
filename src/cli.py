@@ -19,7 +19,7 @@ from pathlib import Path
 def cmd_train(args: argparse.Namespace) -> None:
     import src
     from src.train import TrainConfig, build_deny_examples, calibrate_privilege
-    from src.utils import get_device, load_model
+    from src.enforcer import get_device, load_model
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -53,7 +53,7 @@ def cmd_train(args: argparse.Namespace) -> None:
 def cmd_eval(args: argparse.Namespace) -> None:
     import src
     from src.train import _DEFAULT_ALLOW, build_deny_examples, evaluate_nlpn
-    from src.utils import get_device, load_model
+    from src.enforcer import get_device, load_model
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -73,7 +73,7 @@ def cmd_eval(args: argparse.Namespace) -> None:
 def cmd_calibrate(args: argparse.Namespace) -> None:
     import src
     from src.train import build_deny_examples, calibrate_privilege
-    from src.utils import get_device, load_model
+    from src.enforcer import get_device, load_model
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
