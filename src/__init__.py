@@ -10,8 +10,11 @@ Allocator  →  PolicyAllocator           (signals → privilege g)
 Enforcer   →  wrap_with_nlpn            (g → rank-restricted forward pass)
 """
 from .enforcer import (
+    DEFAULT_MODEL_ID,
     detect_rmax,
+    get_device,
     get_rmax,
+    load_model,
     load_nlpn,
     save_nlpn,
     set_privilege,
@@ -26,7 +29,7 @@ from .translator import PolicyTranslator
 __all__ = [
     "NLPNLinear",
     "wrap_with_nlpn", "set_privilege", "get_rmax", "detect_rmax",
-    "save_nlpn", "load_nlpn",
+    "save_nlpn", "load_nlpn", "get_device", "load_model", "DEFAULT_MODEL_ID",
     "Policy", "PolicyCompiler", "PolicyAllocator",
     "PolicyTranslator",
     "GDPRAllocator", "GDPRPolicyParser", "AuditLog", "verify_audit_log",
