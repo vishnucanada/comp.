@@ -12,14 +12,14 @@ _ROOT = Path(__file__).parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 
-from .config import ALLOWED_ORIGINS, STATIC_DIR
-from .deps import RateLimitExceeded, limiter, rate_limit_exceeded_handler
-from .routers import admin as admin_router
-from .routers import chat, models, openai_compat, policies, training
+from .config import ALLOWED_ORIGINS, STATIC_DIR  # noqa: E402
+from .deps import RateLimitExceeded, limiter, rate_limit_exceeded_handler  # noqa: E402
+from .routers import admin as admin_router  # noqa: E402
+from .routers import chat, models, openai_compat, policies, training  # noqa: E402
 
 app = FastAPI(
     title="comp. — Nested Least-Privilege Networks",

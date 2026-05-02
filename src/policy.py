@@ -27,6 +27,7 @@ ALLOW: category label
 """
 from __future__ import annotations
 
+import contextlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,9 +49,7 @@ class PolicyRule:
         text_lower = text.lower()
         if any(kw in text_lower for kw in self.keywords):
             return True
-        if any(p.search(text) for p in self.patterns):
-            return True
-        return False
+        return bool(any(p.search(text) for p in self.patterns))
 
     def __repr__(self) -> str:
         return f"PolicyRule({self.action}, {self.category!r})"
@@ -141,10 +140,8 @@ def _parse(text: str) -> Policy:
             current.severity = line.split(":", 1)[1].strip().lower()
 
         elif current and line.lower().startswith("article:"):
-            try:
+            with contextlib.suppress(ValueError):
                 current.article = int(line.split(":", 1)[1].strip())
-            except ValueError:
-                pass
 
     if current:
         rules.append(current)

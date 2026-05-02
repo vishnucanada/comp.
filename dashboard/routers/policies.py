@@ -1,4 +1,5 @@
 """Policy CRUD, version history, and enact (translate + test) routes."""
+import contextlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -32,10 +33,8 @@ async def get_policy(name: str):
     structured  = txt.read_text() if txt.exists() else ""
     description = ""
     if meta.exists():
-        try:
+        with contextlib.suppress(Exception):
             description = json.loads(meta.read_text()).get("description", "")
-        except Exception:
-            pass
     return {"name": safe, "description": description, "structured": structured}
 
 
@@ -64,10 +63,8 @@ async def policy_version(name: str, version: str):
     structured  = txt_v.read_text() if txt_v.exists() else ""
     description = ""
     if meta_v.exists():
-        try:
+        with contextlib.suppress(Exception):
             description = json.loads(meta_v.read_text()).get("description", "")
-        except Exception:
-            pass
     return {"name": safe, "version": ver, "description": description, "structured": structured}
 
 
@@ -103,7 +100,7 @@ async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_requi
         policy = PolicyTranslator().translate(req.description)
         structured_text = policy.to_text()
     except Exception as e:
-        raise HTTPException(500, f"Translation error: {e}")
+        raise HTTPException(500, f"Translation error: {e}") from e
 
     compiler = PolicyCompiler(policy)
     results  = []

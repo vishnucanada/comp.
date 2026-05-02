@@ -84,11 +84,11 @@ def _tokenize_pair(
     r_ids = tokenizer(response + eos, add_special_tokens=False)["input_ids"]
     ids = (p_ids + r_ids)[:max_len]
     labels = ([-100] * len(p_ids) + r_ids)[:max_len]
-    if all(l == -100 for l in labels):
+    if all(lbl == -100 for lbl in labels):
         return None  # response was fully truncated
     t = torch.tensor(ids, dtype=torch.long, device=device).unsqueeze(0)
-    l = torch.tensor(labels, dtype=torch.long, device=device).unsqueeze(0)
-    return t, l
+    lbl_t = torch.tensor(labels, dtype=torch.long, device=device).unsqueeze(0)
+    return t, lbl_t
 
 
 def train_nlpn(
