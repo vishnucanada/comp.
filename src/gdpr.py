@@ -1,13 +1,22 @@
 """
-GDPR-specific privilege enforcement.
+GDPR-aware privilege enforcement.
 
-Tiered privilege maps GDPR severity to g:
-  critical (Art. 9)  → 1% of rmax
-  high     (Art. 4)  → 5% of rmax
-  medium              → 20% of rmax
-  none (ALLOW)        → rmax
+Tiered privilege maps data sensitivity to g:
+  critical (Art. 9 special-category data)  → 1% of rmax
+  high     (Art. 4 personal data)          → 5% of rmax
+  medium                                   → 20% of rmax
+  none (ALLOW)                             → rmax
 
-Every allocation is recorded to the audit log (Article 30 obligation).
+Every allocation is recorded to an audit trail for observability.
+
+Scope and limitations
+---------------------
+This module provides inference-time privilege control and a structured audit
+trail. It is NOT a complete GDPR compliance solution. Full compliance also
+requires: data subject records, legal basis documentation, retention schedules,
+data processor agreements, breach notification procedures, and DPIA where
+applicable. Treat this as one technical component of a broader compliance
+programme, not a substitute for it.
 """
 
 from __future__ import annotations
