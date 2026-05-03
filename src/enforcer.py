@@ -300,7 +300,8 @@ def benchmark_overhead(
     import time
 
     device = next(model.parameters()).device
-    dummy_ids = torch.randint(2, 100, (1, seq_len), device=device)
+    # Token ID 2 is safe across all common tokenizers (0=pad, 1=eos, 2=bos/first real token).
+    dummy_ids = torch.full((1, seq_len), 2, dtype=torch.long, device=device)
     n_nlpn = sum(1 for m in model.modules() if isinstance(m, NLPNLinear))
     rmax = get_rmax(model) if n_nlpn > 0 else None
 
