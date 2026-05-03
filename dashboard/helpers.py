@@ -1,12 +1,18 @@
-"""Shared helper functions: name sanitisation, policy persistence, policy loading."""
+"""Shared helper functions: name sanitisation, policy persistence, policy loading, audit log."""
 
 import json
+import os
 import re
+import threading
 import time
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
-from .config import HISTORY_DIR, POLICIES_DIR
+from .config import POLICIES_DIR
+
+_ADMIN_LOG_PATH = POLICIES_DIR.parent / "audit" / "admin_actions.jsonl"
+_ADMIN_LOG_PATH.parent.mkdir(exist_ok=True)
+_log_lock = threading.Lock()
 
 
 def sanitize(name: str) -> str:
@@ -21,19 +27,9 @@ def _safe_name(name: str) -> str:
 
 
 def _persist_policy(safe: str, description: str, structured: str | None) -> None:
-    """Write policy files, archiving the previous version to history first."""
+    """Write policy files to disk."""
     meta_file = POLICIES_DIR / f"{safe}.json"
     txt_file = POLICIES_DIR / f"{safe}.txt"
-
-    if meta_file.exists() or txt_file.exists():
-        ts = time.strftime("%Y%m%dT%H%M%S")
-        archive = HISTORY_DIR / safe
-        archive.mkdir(exist_ok=True)
-        if meta_file.exists():
-            (archive / f"{ts}.json").write_text(meta_file.read_text())
-        if txt_file.exists():
-            (archive / f"{ts}.txt").write_text(txt_file.read_text())
-
     meta_file.write_text(json.dumps({"description": description}))
     if structured:
         txt_file.write_text(structured)
@@ -72,3 +68,48 @@ def policy_check(policy_name: str | None, message: str) -> tuple[str, list[str]]
         return "ALLOW", []
     violated, violations = PolicyCompiler(policy).check(message)
     return ("DENY" if violated else "ALLOW"), violations
+
+
+def log_admin_action(
+    request: Request,
+    action: str,
+    resource: str,
+    details: dict | None = None,
+) -> None:
+    """Append an admin action entry to the audit log."""
+    entry = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "ip": request.client.host if request.client else "unknown",
+        "action": action,
+        "resource": resource,
+        "details": details or {},
+    }
+    hmac_key_hex = os.environ.get("ADMIN_AUDIT_HMAC_KEY", "")
+    if hmac_key_hex:
+        import hmac as _hmac
+
+        sig = _hmac.new(
+            hmac_key_hex.encode(),
+            json.dumps(entry, sort_keys=True).encode(),
+            "sha256",
+        ).hexdigest()
+        entry["_hmac"] = sig
+
+    with _log_lock, _ADMIN_LOG_PATH.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def get_admin_log(limit: int = 100) -> list[dict]:
+    if not _ADMIN_LOG_PATH.exists():
+        return []
+    try:
+        lines = _ADMIN_LOG_PATH.read_text().splitlines()
+        entries = []
+        for line in lines[-limit:]:
+            try:
+                entries.append(json.loads(line))
+            except Exception:
+                continue
+        return list(reversed(entries))
+    except Exception:
+        return []

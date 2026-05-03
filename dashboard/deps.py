@@ -1,16 +1,10 @@
-"""FastAPI dependencies: rate limiter and API-key authentication."""
+"""FastAPI dependencies: API-key authentication."""
 
 from fastapi import HTTPException, Request
-from slowapi import Limiter
-from slowapi import _rate_limit_exceeded_handler as rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from .config import API_KEY
 
-__all__ = ["limiter", "rate_limit_exceeded_handler", "RateLimitExceeded", "_require_auth"]
-
-limiter = Limiter(key_func=get_remote_address)
+__all__ = ["_require_auth"]
 
 
 def _require_auth(request: Request) -> None:
