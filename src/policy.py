@@ -6,14 +6,6 @@ Maps a natural-language policy text file to runtime monitors and privilege alloc
 Pipeline:
   policy.txt → PolicyParser → Policy → PolicyCompiler → PolicyAllocator → g
 
-The PolicyAllocator sits in Layer 2 (Allocator) of the MAE stack.
-At inference it calls the compiler's check() on the decoded prompt;
-if any DENY rule fires, it returns low_privilege instead of rmax.
-
-Without Algorithm 1 training, low privilege produces degraded/garbage output.
-With training (train_nlpn), the model learns that at low privilege the denied
-capability is genuinely unreachable — not just output-filtered.
-
 Policy file format
 ------------------
 # Comment
@@ -36,6 +28,47 @@ from typing import Literal
 
 import torch
 
+# Maps canonical keywords → common paraphrases.
+# Catches synonym-substitution bypass attempts without requiring external NLP.
+_PARAPHRASE_MAP: dict[str, list[str]] = {
+    "salary": ["remuneration", "compensation package", "pay rate", "take-home pay", "paycheck"],
+    "wage": ["hourly rate", "pay rate", "remuneration"],
+    "compensation": ["remuneration", "pay package", "total comp", "payroll"],
+    "pay": ["remuneration", "reimbursement"],
+    "income": ["remuneration", "compensation"],
+    "earnings": ["remuneration", "compensation"],
+    "address": ["residence", "domicile", "where they live", "home location", "residential address"],
+    "home address": ["residential address", "place of residence", "where they reside"],
+    "medical": ["health condition", "clinical", "healthcare", "diagnosis", "prognosis"],
+    "health": ["medical condition", "clinical status", "wellness record"],
+    "diagnosis": ["medical condition", "health condition", "prognosis", "clinical finding"],
+    "prescription": ["medication", "medicine", "drug regimen", "treatment plan"],
+    "email": ["e-mail", "mail address", "electronic mail"],
+    "phone": ["telephone", "mobile number", "cell number", "contact number"],
+    "password": ["passphrase", "login credential", "access code", "secret key"],
+    "credential": ["password", "login", "access token", "auth token"],
+    "ssn": ["social security number", "social security", "national id"],
+    "social security": ["ssn", "national id", "tax identification number"],
+}
+
+# Patterns that indicate prompt injection or extraction-bypass attempts.
+# Used to flag suspicious prompts regardless of keyword presence.
+_INJECTION_PATTERNS: list[re.Pattern] = [
+    re.compile(r"\bpretend\s+(?:you\s+(?:are|'re)|to\s+be)\b", re.I),
+    re.compile(
+        r"\b(?:ignore|forget|disregard|override)\s+(?:your\s+)?(?:previous\s+)?"
+        r"(?:instructions?|rules?|policy|policies|guidelines?|restrictions?)\b",
+        re.I,
+    ),
+    re.compile(r"\bas\s+(?:an?\s+)?(?:unrestricted|unfiltered|uncensored|jailbroken)\b", re.I),
+    re.compile(r"\b(?:jailbreak|do\s+anything\s+now)\b", re.I),
+    re.compile(
+        r"\b(?:hypothetically|theoretically|imagine|suppose)\b.{0,60}"
+        r"\b(?:could|would)\s+you\s+(?:share|tell|give|provide|reveal)\b",
+        re.I,
+    ),
+]
+
 
 @dataclass
 class PolicyRule:
@@ -48,8 +81,12 @@ class PolicyRule:
 
     def matches(self, text: str) -> bool:
         text_lower = text.lower()
-        if any(kw in text_lower for kw in self.keywords):
-            return True
+        for kw in self.keywords:
+            if kw in text_lower:
+                return True
+            for synonym in _PARAPHRASE_MAP.get(kw, []):
+                if synonym in text_lower:
+                    return True
         return bool(any(p.search(text) for p in self.patterns))
 
     def __repr__(self) -> str:
@@ -155,6 +192,10 @@ class PolicyCompiler:
     Compile a Policy into a callable runtime monitor.
 
     check(text, history=None) → (violated: bool, categories: list[str])
+
+    Injection patterns (roleplay bypasses, instruction overrides) are detected
+    on top of keyword violations and prepended to the category list as
+    "[injection-attempt]" so the audit log surfaces them explicitly.
     """
 
     def __init__(self, policy: Policy):
@@ -167,6 +208,9 @@ class PolicyCompiler:
     ) -> tuple[bool, list[str]]:
         combined = _combine(text, history)
         violated = [r.category for r in self.policy.denied if r.matches(combined)]
+        # If a keyword violation is wrapped in an injection pattern, flag it explicitly.
+        if violated and any(p.search(combined) for p in _INJECTION_PATTERNS):
+            violated = ["[injection-attempt]"] + violated
         return bool(violated), violated
 
     def __repr__(self) -> str:
@@ -175,12 +219,25 @@ class PolicyCompiler:
 
 
 class PolicyAllocator:
-    """Allocator driven by a compiled policy: DENY → low_privilege, else rmax."""
+    """Allocator driven by a compiled policy: DENY → low_privilege, else rmax.
 
-    def __init__(self, compiler: PolicyCompiler, tokenizer, low_privilege: int = 1):
+    Args:
+        default_deny: When True, prompts matching injection patterns are denied
+                      even without a keyword match. Safer but may increase
+                      false-positive rate on legitimate prompts.
+    """
+
+    def __init__(
+        self,
+        compiler: PolicyCompiler,
+        tokenizer,
+        low_privilege: int = 1,
+        default_deny: bool = False,
+    ):
         self.compiler = compiler
         self.tokenizer = tokenizer
         self.low_privilege = low_privilege
+        self.default_deny = default_deny
 
     def allocate(
         self,
@@ -192,6 +249,14 @@ class PolicyAllocator:
     ) -> int:
         text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         violated, categories = self.compiler.check(text, history)
+
+        if not violated and self.default_deny:
+            if any(p.search(text) for p in _INJECTION_PATTERNS):
+                violated = True
+                categories = ["[suspicious-pattern]"]
+                print(f"  [policy] DENY (injection pattern, no keyword match) → {categories}")
+                return self.low_privilege
+
         if violated:
             print(f"  [policy] DENY → {categories}  (privilege: {rmax} → {self.low_privilege})")
         else:
