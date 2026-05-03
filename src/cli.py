@@ -9,6 +9,7 @@ Subcommands
   comp calibrate <policy> <ckpt> Find the optimal low_g for a checkpoint
   comp serve                     Start the web dashboard
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,8 +19,8 @@ from pathlib import Path
 
 def cmd_train(args: argparse.Namespace) -> None:
     import src
-    from src.train import TrainConfig, build_deny_examples, calibrate_privilege
     from src.enforcer import get_device, load_model
+    from src.train import TrainConfig, build_deny_examples, calibrate_privilege
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -27,7 +28,8 @@ def cmd_train(args: argparse.Namespace) -> None:
 
     print(f"Loading {args.model} ...")
     model, tokenizer = load_model(
-        args.model, device,
+        args.model,
+        device,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
@@ -36,7 +38,9 @@ def cmd_train(args: argparse.Namespace) -> None:
 
     deny_ex = build_deny_examples(policy)
     src.train_nlpn(
-        model, tokenizer, policy,
+        model,
+        tokenizer,
+        policy,
         config=TrainConfig(epochs=args.epochs, lr=args.lr, orth_reg=args.orth_reg),
         deny_examples=deny_ex,
     )
@@ -45,15 +49,17 @@ def cmd_train(args: argparse.Namespace) -> None:
         low_g = calibrate_privilege(model, tokenizer, deny_ex, rmax=rmax)
         print(f"\nCalibrated low_g = {low_g}  (rmax={rmax})")
 
-    save_path = Path(args.output) if args.output else Path("nlpn_checkpoints") / Path(args.policy).stem
+    save_path = (
+        Path(args.output) if args.output else Path("nlpn_checkpoints") / Path(args.policy).stem
+    )
     src.save_nlpn(model, save_path, model_id=args.model)
     print(f"\nCheckpoint saved → {save_path}/")
 
 
 def cmd_eval(args: argparse.Namespace) -> None:
     import src
-    from src.train import _DEFAULT_ALLOW, build_deny_examples, evaluate_nlpn
     from src.enforcer import get_device, load_model
+    from src.train import _DEFAULT_ALLOW, build_deny_examples, evaluate_nlpn
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -72,8 +78,8 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
 def cmd_calibrate(args: argparse.Namespace) -> None:
     import src
-    from src.train import build_deny_examples, calibrate_privilege
     from src.enforcer import get_device, load_model
+    from src.train import build_deny_examples, calibrate_privilege
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -84,7 +90,9 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
     src.load_nlpn(model, args.checkpoint)
 
     deny_ex = build_deny_examples(policy)
-    low_g = calibrate_privilege(model, tokenizer, deny_ex, rmax=rmax, target_suppress_rate=args.target)
+    low_g = calibrate_privilege(
+        model, tokenizer, deny_ex, rmax=rmax, target_suppress_rate=args.target
+    )
     print(f"\nOptimal low_g = {low_g}  (rmax={rmax}, target={args.target:.0%})")
 
 
@@ -103,12 +111,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_train = sub.add_parser("train", help="Fine-tune NLPN layers for a policy")
     p_train.add_argument("policy")
-    p_train.add_argument("--model",        default="Qwen/Qwen2.5-0.5B")
-    p_train.add_argument("--epochs",       type=int,   default=3)
-    p_train.add_argument("--lr",           type=float, default=1e-4)
-    p_train.add_argument("--orth-reg",     type=float, default=0.0, dest="orth_reg")
-    p_train.add_argument("--calibrate",    action="store_true")
-    p_train.add_argument("--output",       default=None)
+    p_train.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
+    p_train.add_argument("--epochs", type=int, default=3)
+    p_train.add_argument("--lr", type=float, default=1e-4)
+    p_train.add_argument("--orth-reg", type=float, default=0.0, dest="orth_reg")
+    p_train.add_argument("--calibrate", action="store_true")
+    p_train.add_argument("--output", default=None)
     p_train.add_argument("--load-in-8bit", action="store_true", dest="load_in_8bit")
     p_train.add_argument("--load-in-4bit", action="store_true", dest="load_in_4bit")
     p_train.set_defaults(func=cmd_train)
@@ -122,13 +130,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cal = sub.add_parser("calibrate", help="Find optimal low_g")
     p_cal.add_argument("policy")
     p_cal.add_argument("checkpoint")
-    p_cal.add_argument("--model",  default="Qwen/Qwen2.5-0.5B")
+    p_cal.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
     p_cal.add_argument("--target", type=float, default=0.9)
     p_cal.set_defaults(func=cmd_calibrate)
 
     p_serve = sub.add_parser("serve", help="Start the web dashboard")
-    p_serve.add_argument("--host",   default="0.0.0.0")
-    p_serve.add_argument("--port",   type=int, default=8000)
+    p_serve.add_argument("--host", default="0.0.0.0")
+    p_serve.add_argument("--port", type=int, default=8000)
     p_serve.add_argument("--reload", action="store_true")
     p_serve.set_defaults(func=cmd_serve)
 

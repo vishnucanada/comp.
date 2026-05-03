@@ -1,4 +1,5 @@
 """Shared helper functions: name sanitisation, policy persistence, policy loading."""
+
 import json
 import re
 import time
@@ -22,10 +23,10 @@ def _safe_name(name: str) -> str:
 def _persist_policy(safe: str, description: str, structured: str | None) -> None:
     """Write policy files, archiving the previous version to history first."""
     meta_file = POLICIES_DIR / f"{safe}.json"
-    txt_file  = POLICIES_DIR / f"{safe}.txt"
+    txt_file = POLICIES_DIR / f"{safe}.txt"
 
     if meta_file.exists() or txt_file.exists():
-        ts      = time.strftime("%Y%m%dT%H%M%S")
+        ts = time.strftime("%Y%m%dT%H%M%S")
         archive = HISTORY_DIR / safe
         archive.mkdir(exist_ok=True)
         if meta_file.exists():
@@ -46,7 +47,7 @@ def _load_policy(name: str):
     safe = sanitize(name)
     if not safe:
         return None
-    txt  = POLICIES_DIR / f"{safe}.txt"
+    txt = POLICIES_DIR / f"{safe}.txt"
     meta = POLICIES_DIR / f"{safe}.json"
     if txt.exists():
         return Policy.from_file(txt)
@@ -63,6 +64,7 @@ def _load_policy(name: str):
 def policy_check(policy_name: str | None, message: str) -> tuple[str, list[str]]:
     """Return (decision, violations) for a message against a named policy."""
     from src.policy import PolicyCompiler
+
     if not policy_name:
         return "ALLOW", []
     policy = _load_policy(policy_name)

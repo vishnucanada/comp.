@@ -1,4 +1,5 @@
 """Model-registry routes: list backends, load NLPN checkpoints, check status."""
+
 import os
 
 from fastapi import APIRouter, Depends, HTTPException

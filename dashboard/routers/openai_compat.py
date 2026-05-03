@@ -7,6 +7,7 @@ Models NLPN privilege enforcement transparently before generation.
 Supported request fields: model, messages, max_tokens, temperature, stream.
 Returns OpenAI-format response with extra `x_comp_policy` field.
 """
+
 import json
 import time
 import uuid
@@ -28,24 +29,26 @@ router = APIRouter(prefix="/v1")
 # Request / response models (OpenAI-compatible)
 # ---------------------------------------------------------------------------
 
+
 class OAIMessage(BaseModel):
-    role:    str
+    role: str
     content: str = Field(..., max_length=16384)
 
 
 class OAIRequest(BaseModel):
-    model:      str               = "comp-enforced"
-    messages:   list[OAIMessage]
-    max_tokens: int               = Field(512, ge=1, le=4096)
-    temperature: float            = Field(0.7, ge=0.0, le=2.0)
-    stream:     bool              = False
+    model: str = "comp-enforced"
+    messages: list[OAIMessage]
+    max_tokens: int = Field(512, ge=1, le=4096)
+    temperature: float = Field(0.7, ge=0.0, le=2.0)
+    stream: bool = False
     # comp. extensions
-    policy:     str | None        = Field(None, max_length=64)
+    policy: str | None = Field(None, max_length=64)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _split_history(messages: list[OAIMessage]) -> tuple[str, list[dict]]:
     """Return (last_user_message, prior_history_dicts)."""
@@ -58,19 +61,21 @@ def _split_history(messages: list[OAIMessage]) -> tuple[str, list[dict]]:
 
 def _oai_response(content: str, model: str, finish: str = "stop") -> dict:
     return {
-        "id":      f"chatcmpl-{uuid.uuid4().hex[:12]}",
-        "object":  "chat.completion",
+        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        "object": "chat.completion",
         "created": int(time.time()),
-        "model":   model,
-        "choices": [{
-            "index":         0,
-            "message":       {"role": "assistant", "content": content},
-            "finish_reason": finish,
-        }],
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": finish,
+            }
+        ],
         "usage": {
-            "prompt_tokens":     0,
+            "prompt_tokens": 0,
             "completion_tokens": 0,
-            "total_tokens":      0,
+            "total_tokens": 0,
         },
     }
 
@@ -80,10 +85,10 @@ def _oai_chunk(delta_content: str | None, model: str, finish: str | None = None)
     if delta_content is not None:
         choice["delta"] = {"role": "assistant", "content": delta_content}
     chunk = {
-        "id":      f"chatcmpl-{uuid.uuid4().hex[:12]}",
-        "object":  "chat.completion.chunk",
+        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        "object": "chat.completion.chunk",
         "created": int(time.time()),
-        "model":   model,
+        "model": model,
         "choices": [choice],
     }
     return f"data: {json.dumps(chunk)}\n\n"
@@ -93,6 +98,7 @@ def _oai_chunk(delta_content: str | None, model: str, finish: str | None = None)
 # Route
 # ---------------------------------------------------------------------------
 
+
 @router.post("/chat/completions")
 @limiter.limit("30/minute")
 async def chat_completions(request: Request, req: OAIRequest):
@@ -100,19 +106,21 @@ async def chat_completions(request: Request, req: OAIRequest):
     decision, violations = policy_check(req.policy, message)
 
     policy_meta = {
-        "decision":   decision,
+        "decision": decision,
         "violations": violations,
-        "policy":     req.policy,
+        "policy": req.policy,
     }
 
     # --- DENY ---
     if decision == "DENY":
         blocked = f"[BLOCKED by policy '{req.policy}': {', '.join(violations)}]"
         if req.stream:
+
             async def blocked_stream():
                 yield _oai_chunk(blocked, req.model)
                 yield _oai_chunk(None, req.model, finish="stop")
                 yield "data: [DONE]\n\n"
+
             return StreamingResponse(blocked_stream(), media_type="text/event-stream")
         resp = _oai_response(blocked, req.model)
         resp["x_comp_policy"] = policy_meta
@@ -123,16 +131,19 @@ async def chat_completions(request: Request, req: OAIRequest):
         model_obj, tokenizer = model_registry.get(sanitize(req.policy))
         if model_obj is not None:
             import asyncio
+
             loop = asyncio.get_event_loop()
             text, model_name = await loop.run_in_executor(
                 None, nlpn_generate, model_obj, tokenizer, message, sanitize(req.policy)
             )
             if req.stream:
+
                 async def nlpn_stream():
                     for word in text.split():
                         yield _oai_chunk(word + " ", model_name)
                     yield _oai_chunk(None, model_name, finish="stop")
                     yield "data: [DONE]\n\n"
+
                 return StreamingResponse(nlpn_stream(), media_type="text/event-stream")
             resp = _oai_response(text, model_name)
             resp["x_comp_policy"] = policy_meta
@@ -156,6 +167,7 @@ async def chat_completions(request: Request, req: OAIRequest):
 
             async def ollama_stream() -> AsyncGenerator[str, None]:
                 import asyncio
+
                 loop = asyncio.get_event_loop()
                 model_name = f"ollama/{ollama}"
                 while True:
@@ -183,6 +195,6 @@ async def list_models():
         "object": "list",
         "data": [
             {"id": "comp-enforced", "object": "model", "created": 0, "owned_by": "comp"},
-            {"id": "comp-nlpn",     "object": "model", "created": 0, "owned_by": "comp"},
+            {"id": "comp-nlpn", "object": "model", "created": 0, "owned_by": "comp"},
         ],
     }

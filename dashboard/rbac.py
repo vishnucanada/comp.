@@ -1,4 +1,5 @@
 """Role-based access control and admin audit trail."""
+
 import json
 import os
 import threading
@@ -19,11 +20,12 @@ _log_lock = threading.Lock()
 ROLES = {"admin", "policy-editor", "viewer"}
 
 # Route-level required roles (path_prefix → minimum required role set)
-_WRITE_ROLES  = {"admin", "policy-editor"}
-_ADMIN_ROLES  = {"admin"}
+_WRITE_ROLES = {"admin", "policy-editor"}
+_ADMIN_ROLES = {"admin"}
 
 # Role hierarchy: admin > policy-editor > viewer
 _ROLE_RANK = {"admin": 3, "policy-editor": 2, "viewer": 1}
+
 
 # API key → role mapping loaded from RBAC_KEYS env var (JSON string)
 # Example: RBAC_KEYS='{"key-abc":"admin","key-xyz":"policy-editor","key-123":"viewer"}'
@@ -47,8 +49,10 @@ def get_role(request: Request) -> str | None:
 
 def require_role(allowed: set[str]):
     """FastAPI dependency factory. Usage: Depends(require_role({'admin'}))"""
+
     def dependency(request: Request):
         from .config import API_KEY
+
         # Legacy single-key bypass: if API_KEY is set and matches, grant admin
         if API_KEY and request.headers.get("X-API-Key", "") == API_KEY:
             return "admin"
@@ -56,19 +60,23 @@ def require_role(allowed: set[str]):
         if role is None:
             raise HTTPException(401, "Authentication required")
         if role not in allowed:
-            raise HTTPException(403, f"Role '{role}' lacks permission; need one of {sorted(allowed)}")
+            raise HTTPException(
+                403, f"Role '{role}' lacks permission; need one of {sorted(allowed)}"
+            )
         return role
+
     return dependency
 
 
 # Convenience pre-built dependencies
-require_admin         = require_role(_ADMIN_ROLES)
-require_write_access  = require_role(_WRITE_ROLES)
+require_admin = require_role(_ADMIN_ROLES)
+require_write_access = require_role(_WRITE_ROLES)
 
 
 # ---------------------------------------------------------------------------
 # Admin audit trail
 # ---------------------------------------------------------------------------
+
 
 def log_admin_action(
     request: Request,
@@ -79,16 +87,17 @@ def log_admin_action(
     """Append a tamper-evident admin action entry to the audit log."""
     role = get_role(request) or "legacy-key"
     entry = {
-        "ts":       time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "ip":       request.client.host if request.client else "unknown",
-        "role":     role,
-        "action":   action,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "ip": request.client.host if request.client else "unknown",
+        "role": role,
+        "action": action,
         "resource": resource,
-        "details":  details or {},
+        "details": details or {},
     }
     hmac_key_hex = os.environ.get("ADMIN_AUDIT_HMAC_KEY", "")
     if hmac_key_hex:
         import hmac as _hmac
+
         sig = _hmac.new(
             hmac_key_hex.encode(),
             json.dumps(entry, sort_keys=True).encode(),

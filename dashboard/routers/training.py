@@ -1,4 +1,5 @@
 """Training job routes: start, status, and live SSE progress stream."""
+
 import asyncio
 import json
 
@@ -18,13 +19,16 @@ async def start_training(name: str, req: TrainRequest, _auth=Depends(_require_au
     safe = _safe_name(name)
     if _load_policy(safe) is None:
         raise HTTPException(404, f"Policy '{safe}' not found")
-    training_registry.train_async(safe, {
-        "model_id":    req.model_id,
-        "epochs":      req.epochs,
-        "lr":          req.lr,
-        "orth_reg":    req.orth_reg,
-        "adversarial": req.adversarial,
-    })
+    training_registry.train_async(
+        safe,
+        {
+            "model_id": req.model_id,
+            "epochs": req.epochs,
+            "lr": req.lr,
+            "orth_reg": req.orth_reg,
+            "adversarial": req.adversarial,
+        },
+    )
     return {"status": "training", "name": safe}
 
 
@@ -35,7 +39,7 @@ async def training_status():
 
 @router.get("/api/train/{name}/stream")
 async def training_stream(name: str):
-    safe   = _safe_name(name)
+    safe = _safe_name(name)
     status = training_registry.status(safe)
 
     if status == "not_started":

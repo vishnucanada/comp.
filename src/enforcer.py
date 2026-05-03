@@ -1,4 +1,5 @@
 """Enforcement operator: wrap a model with NLPN layers and control privilege."""
+
 from __future__ import annotations
 
 import json
@@ -73,18 +74,29 @@ def load_model(
     model.eval()
     return model, tokenizer
 
+
 # MLP and attention projection names across common architectures.
 _DEFAULT_TARGET_MODULES = [
     # MLP projections
-    "down_proj", "gate_proj", "up_proj",     # Llama, Qwen, Mistral
-    "c_fc",                                   # GPT-2 MLP
-    "dense_h_to_4h", "dense_4h_to_h",        # Pythia, GPT-NeoX
-    "fc1", "fc2",                             # BERT, generic
+    "down_proj",
+    "gate_proj",
+    "up_proj",  # Llama, Qwen, Mistral
+    "c_fc",  # GPT-2 MLP
+    "dense_h_to_4h",
+    "dense_4h_to_h",  # Pythia, GPT-NeoX
+    "fc1",
+    "fc2",  # BERT, generic
     # Attention projections
-    "q_proj", "k_proj", "v_proj", "o_proj",  # Llama, Qwen, Mistral
-    "c_attn", "c_proj",                       # GPT-2 (fused QKV + shared output)
-    "query_key_value",                        # Pythia, GPT-NeoX
-    "query", "key", "value",                  # BERT
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",  # Llama, Qwen, Mistral
+    "c_attn",
+    "c_proj",  # GPT-2 (fused QKV + shared output)
+    "query_key_value",  # Pythia, GPT-NeoX
+    "query",
+    "key",
+    "value",  # BERT
 ]
 
 
@@ -225,12 +237,17 @@ def save_nlpn(
         raise ValueError("No NLPNLinear layers found — call wrap_with_nlpn() first.")
 
     torch.save(weights, path / "nlpn_weights.pt")
-    (path / "nlpn_config.json").write_text(json.dumps({
-        "model_id": model_id,
-        "rmax": get_rmax(model),
-        "n_layers": len(layer_meta),
-        "layers": layer_meta,
-    }, indent=2))
+    (path / "nlpn_config.json").write_text(
+        json.dumps(
+            {
+                "model_id": model_id,
+                "rmax": get_rmax(model),
+                "n_layers": len(layer_meta),
+                "layers": layer_meta,
+            },
+            indent=2,
+        )
+    )
     print(f"Saved {len(layer_meta)} NLPN layers → {path}")
 
 

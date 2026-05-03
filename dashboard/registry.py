@@ -1,4 +1,5 @@
 """Model and training job registries — thread-safe background workers."""
+
 import json
 import queue
 from threading import Lock, Thread
@@ -11,10 +12,10 @@ class ModelRegistry:
     """Background-loadable NLPN model cache."""
 
     def __init__(self):
-        self._lock   = Lock()
+        self._lock = Lock()
         self._models: dict[str, object] = {}
-        self._toks:   dict[str, object] = {}
-        self._status: dict[str, str]    = {}
+        self._toks: dict[str, object] = {}
+        self._status: dict[str, str] = {}
 
     def status(self, name: str) -> str:
         return self._status.get(name, "not_loaded")
@@ -40,7 +41,7 @@ class ModelRegistry:
             from src.enforcer import detect_rmax, load_model, load_nlpn, wrap_with_nlpn
 
             ckpt = CHECKPOINTS_DIR / name
-            cfg  = json.loads((ckpt / "nlpn_config.json").read_text())
+            cfg = json.loads((ckpt / "nlpn_config.json").read_text())
             model_id = cfg.get("model_id")
             if not model_id:
                 raise ValueError("nlpn_config.json missing model_id")
@@ -53,7 +54,7 @@ class ModelRegistry:
 
             with self._lock:
                 self._models[name] = model
-                self._toks[name]   = tokenizer
+                self._toks[name] = tokenizer
                 self._status[name] = "ready"
         except Exception as e:
             with self._lock:
@@ -64,8 +65,8 @@ class TrainingRegistry:
     """Background training jobs with live SSE progress streaming."""
 
     def __init__(self):
-        self._lock:   Lock                   = Lock()
-        self._status: dict[str, str]         = {}
+        self._lock: Lock = Lock()
+        self._status: dict[str, str] = {}
         self._queues: dict[str, queue.Queue] = {}
 
     def status(self, name: str) -> str:
@@ -113,12 +114,13 @@ class TrainingRegistry:
             deny_ex = build_deny_examples(policy)
 
             def on_step(epoch, step, loss):
-                q.put({"type": "progress", "epoch": epoch, "step": step,
-                       "loss": round(loss, 4)})
+                q.put({"type": "progress", "epoch": epoch, "step": step, "loss": round(loss, 4)})
 
             q.put({"type": "status", "message": "Training ..."})
             src.train_nlpn(
-                model, tokenizer, policy,
+                model,
+                tokenizer,
+                policy,
                 config=TrainConfig(
                     epochs=config.get("epochs", 3),
                     lr=config.get("lr", 1e-4),
@@ -143,5 +145,5 @@ class TrainingRegistry:
             q.put(None)
 
 
-model_registry    = ModelRegistry()
+model_registry = ModelRegistry()
 training_registry = TrainingRegistry()

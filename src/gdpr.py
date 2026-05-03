@@ -9,6 +9,7 @@ Tiered privilege maps GDPR severity to g:
 
 Every allocation is recorded to the audit log (Article 30 obligation).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,12 +28,14 @@ from .policy import PolicyRule, _parse
 @dataclass
 class GDPRRule(PolicyRule):
     """PolicyRule with GDPR-specific severity default."""
+
     severity: str = "high"  # GDPR default: high (Art. 4 personal data)
+
 
 SEVERITY_PRIVILEGE: dict[str, float] = {
     "critical": 0.01,
-    "high":     0.05,
-    "medium":   0.20,
+    "high": 0.05,
+    "medium": 0.20,
 }
 _SEVERITY_ORDER = ["critical", "high", "medium"]
 
@@ -90,8 +93,10 @@ class AuditLog:
         if not self._entries:
             return "Audit log: empty"
         suppressed = [e for e in self._entries if e.privilege_granted < e.rmax]
-        lines = [f"Audit log: {len(self._entries)} entries  "
-                 f"({len(suppressed)} suppressed, {len(self._entries)-len(suppressed)} full)"]
+        lines = [
+            f"Audit log: {len(self._entries)} entries  "
+            f"({len(suppressed)} suppressed, {len(self._entries) - len(suppressed)} full)"
+        ]
         cat_counts: dict[str, int] = {}
         for e in suppressed:
             for cat in e.triggered_categories:
@@ -145,18 +150,23 @@ class GDPRAllocator:
 
         worst = min(
             triggered,
-            key=lambda r: _SEVERITY_ORDER.index(r.severity)
-            if r.severity in _SEVERITY_ORDER else len(_SEVERITY_ORDER),
+            key=lambda r: (
+                _SEVERITY_ORDER.index(r.severity)
+                if r.severity in _SEVERITY_ORDER
+                else len(_SEVERITY_ORDER)
+            ),
         )
         frac = self.severity_privilege.get(worst.severity, 0.05)
         g = max(1, int(rmax * frac))
 
         categories = [r.category for r in triggered]
-        articles   = sorted({r.article for r in triggered if r.article})
+        articles = sorted({r.article for r in triggered if r.article})
         self._log(text, categories, articles, worst.severity, g, rmax)
         arts_str = f"Art.{articles}" if articles else ""
-        print(f"  [GDPR DENY] {worst.severity.upper()} {arts_str}  "
-              f"→ {categories}  →  g={g}/{rmax} ({frac*100:.0f}%)")
+        print(
+            f"  [GDPR DENY] {worst.severity.upper()} {arts_str}  "
+            f"→ {categories}  →  g={g}/{rmax} ({frac * 100:.0f}%)"
+        )
         return g
 
     def generate(
@@ -173,21 +183,25 @@ class GDPRAllocator:
         set_privilege(model, g)
         with torch.no_grad():
             output = model.generate(
-                input_ids, attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id, **generate_kwargs,
+                input_ids,
+                attention_mask=attention_mask,
+                pad_token_id=self.tokenizer.eos_token_id,
+                **generate_kwargs,
             )
         return output, g
 
     def _log(self, text, categories, articles, severity, g, rmax) -> None:
-        self.audit_log.record(AuditEntry(
-            timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
-            prompt_hash=hashlib.sha256(text.encode()).hexdigest(),
-            triggered_categories=categories,
-            articles=articles,
-            severity=severity,
-            privilege_granted=g,
-            rmax=rmax,
-        ))
+        self.audit_log.record(
+            AuditEntry(
+                timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                prompt_hash=hashlib.sha256(text.encode()).hexdigest(),
+                triggered_categories=categories,
+                articles=articles,
+                severity=severity,
+                privilege_granted=g,
+                rmax=rmax,
+            )
+        )
 
 
 def verify_audit_log(path: str | Path, hmac_key: bytes) -> dict:

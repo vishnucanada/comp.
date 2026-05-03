@@ -3,6 +3,7 @@ comp. Admin Dashboard — FastAPI application.
 
 Entry point for ``uvicorn dashboard:app``.
 """
+
 import sys
 from pathlib import Path
 
@@ -60,4 +61,5 @@ async def dashboard_page():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("dashboard:app", host="0.0.0.0", port=8000)

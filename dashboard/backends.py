@@ -1,4 +1,5 @@
 """LLM backends: Ollama, Anthropic, NLPN rank-restricted generation, SSE streaming."""
+
 import json
 import os
 import queue
@@ -33,11 +34,13 @@ def ollama_chat(message: str, history: list[dict]) -> tuple[str, str] | None:
     if not model:
         return None
     try:
-        body = json.dumps({
-            "model":    model,
-            "messages": history + [{"role": "user", "content": message}],
-            "stream":   False,
-        }).encode()
+        body = json.dumps(
+            {
+                "model": model,
+                "messages": history + [{"role": "user", "content": message}],
+                "stream": False,
+            }
+        ).encode()
         req = _urllib.Request(
             f"{OLLAMA_BASE_URL}/api/chat",
             data=body,
@@ -55,6 +58,7 @@ def anthropic_chat(message: str, history: list[dict]) -> tuple[str, str] | None:
         return None
     try:
         import anthropic
+
         resp = anthropic.Anthropic(api_key=key).messages.create(
             model=ANTHROPIC_MODEL,
             max_tokens=ANTHROPIC_MAX_TOK,
@@ -83,9 +87,9 @@ def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str
     from src.enforcer import get_rmax, set_privilege
     from src.policy import PolicyCompiler
 
-    rmax   = get_rmax(model)
+    rmax = get_rmax(model)
     policy = _load_policy(policy_name)
-    g      = rmax
+    g = rmax
 
     if policy:
         violated, _ = PolicyCompiler(policy).check(message)
@@ -101,7 +105,7 @@ def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str
             pad_token_id=tokenizer.eos_token_id,
             do_sample=False,
         )
-    new_ids = out[0][enc["input_ids"].shape[1]:]
+    new_ids = out[0][enc["input_ids"].shape[1] :]
     return tokenizer.decode(new_ids, skip_special_tokens=True), f"nlpn/{policy_name}"
 
 
@@ -113,11 +117,13 @@ def ollama_stream_to_queue(
 ) -> None:
     """Push SSE-style dicts onto q in a background thread. Sentinel: None."""
     try:
-        body = json.dumps({
-            "model":    model_name,
-            "messages": history + [{"role": "user", "content": message}],
-            "stream":   True,
-        }).encode()
+        body = json.dumps(
+            {
+                "model": model_name,
+                "messages": history + [{"role": "user", "content": message}],
+                "stream": True,
+            }
+        ).encode()
         req = _urllib.Request(
             f"{OLLAMA_BASE_URL}/api/chat",
             data=body,
@@ -127,7 +133,7 @@ def ollama_stream_to_queue(
             for raw in r:
                 try:
                     chunk = json.loads(raw)
-                    text  = chunk.get("message", {}).get("content", "")
+                    text = chunk.get("message", {}).get("content", "")
                     if text:
                         q.put({"type": "chunk", "text": text})
                     if chunk.get("done"):

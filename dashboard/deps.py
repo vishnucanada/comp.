@@ -1,4 +1,5 @@
 """FastAPI dependencies: rate limiter and API-key authentication."""
+
 from fastapi import HTTPException, Request
 from slowapi import Limiter
 from slowapi import _rate_limit_exceeded_handler as rate_limit_exceeded_handler

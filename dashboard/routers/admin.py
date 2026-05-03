@@ -1,4 +1,5 @@
 """Admin routes: RBAC, usage metering, audit log, policy library."""
+
 from fastapi import APIRouter, Depends, Request
 
 from ..config import ROOT
@@ -43,10 +44,12 @@ async def policy_library():
 async def get_library_policy(policy_id: str):
     """Return the content of a library policy."""
     import re
+
     safe = re.sub(r"[^a-zA-Z0-9_-]", "", policy_id)
     f = _LIBRARY_DIR / f"{safe}.txt"
     if not f.exists():
         from fastapi import HTTPException
+
         raise HTTPException(404, "Library policy not found")
     return {"id": safe, "content": f.read_text()}
 
@@ -64,11 +67,14 @@ async def install_library_policy(
     f = _LIBRARY_DIR / f"{safe}.txt"
     if not f.exists():
         from fastapi import HTTPException
+
         raise HTTPException(404, "Library policy not found")
 
     content = f.read_text()
     first_line = content.split("\n")[0]
-    description = first_line.replace("name:", "").strip() if first_line.startswith("name:") else safe
+    description = (
+        first_line.replace("name:", "").strip() if first_line.startswith("name:") else safe
+    )
     _persist_policy(safe, description, content)
 
     log_admin_action(request, "install_library_policy", safe)

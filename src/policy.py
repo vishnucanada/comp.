@@ -25,6 +25,7 @@ DENY: category label
 
 ALLOW: category label
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -42,8 +43,8 @@ class PolicyRule:
     category: str
     keywords: list[str] = field(default_factory=list)
     patterns: list[re.Pattern] = field(default_factory=list)
-    severity: str = "none"          # GDPR tier: critical | high | medium | none
-    article: int | None = None      # GDPR article number
+    severity: str = "none"  # GDPR tier: critical | high | medium | none
+    article: int | None = None  # GDPR article number
 
     def matches(self, text: str) -> bool:
         text_lower = text.lower()
@@ -197,16 +198,20 @@ class PolicyAllocator:
             print(f"  [policy] ALLOW  (privilege: {rmax})")
         return self.low_privilege if violated else rmax
 
-    def generate(self, model, input_ids, attention_mask=None, rmax=None,
-                 history=None, **generate_kwargs):
+    def generate(
+        self, model, input_ids, attention_mask=None, rmax=None, history=None, **generate_kwargs
+    ):
         from .enforcer import get_rmax, set_privilege
+
         if rmax is None:
             rmax = get_rmax(model)
         g = self.allocate(model, input_ids, rmax, history=history)
         set_privilege(model, g)
         with torch.no_grad():
             output = model.generate(
-                input_ids, attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id, **generate_kwargs,
+                input_ids,
+                attention_mask=attention_mask,
+                pad_token_id=self.tokenizer.eos_token_id,
+                **generate_kwargs,
             )
         return output, g

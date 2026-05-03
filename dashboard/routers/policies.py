@@ -1,4 +1,5 @@
 """Policy CRUD, version history, and enact (translate + test) routes."""
+
 import contextlib
 import json
 
@@ -26,11 +27,11 @@ async def list_policies():
 @router.get("/api/policies/{name}")
 async def get_policy(name: str):
     safe = _safe_name(name)
-    txt  = POLICIES_DIR / f"{safe}.txt"
+    txt = POLICIES_DIR / f"{safe}.txt"
     meta = POLICIES_DIR / f"{safe}.json"
     if not txt.exists() and not meta.exists():
         raise HTTPException(404, "Policy not found")
-    structured  = txt.read_text() if txt.exists() else ""
+    structured = txt.read_text() if txt.exists() else ""
     description = ""
     if meta.exists():
         with contextlib.suppress(Exception):
@@ -40,7 +41,7 @@ async def get_policy(name: str):
 
 @router.get("/api/policies/{name}/history")
 async def policy_history(name: str):
-    safe    = _safe_name(name)
+    safe = _safe_name(name)
     archive = HISTORY_DIR / safe
     if not archive.exists():
         return {"name": safe, "versions": []}
@@ -53,14 +54,14 @@ async def policy_history(name: str):
 
 @router.get("/api/policies/{name}/versions/{version}")
 async def policy_version(name: str, version: str):
-    safe    = _safe_name(name)
-    ver     = sanitize(version)
+    safe = _safe_name(name)
+    ver = sanitize(version)
     archive = HISTORY_DIR / safe
-    txt_v   = archive / f"{ver}.txt"
-    meta_v  = archive / f"{ver}.json"
+    txt_v = archive / f"{ver}.txt"
+    meta_v = archive / f"{ver}.json"
     if not txt_v.exists() and not meta_v.exists():
         raise HTTPException(404, "Version not found")
-    structured  = txt_v.read_text() if txt_v.exists() else ""
+    structured = txt_v.read_text() if txt_v.exists() else ""
     description = ""
     if meta_v.exists():
         with contextlib.suppress(Exception):
@@ -77,7 +78,7 @@ async def save_policy(req: PolicySaveRequest, _auth=Depends(_require_auth)):
 
 @router.delete("/api/policies/{name}")
 async def delete_policy(name: str, _auth=Depends(_require_auth)):
-    safe    = _safe_name(name)
+    safe = _safe_name(name)
     deleted = False
     for ext in (".txt", ".json"):
         p = POLICIES_DIR / f"{safe}{ext}"
@@ -103,21 +104,23 @@ async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_requi
         raise HTTPException(500, f"Translation error: {e}") from e
 
     compiler = PolicyCompiler(policy)
-    results  = []
+    results = []
     for tc in req.test_cases:
         violated, categories = compiler.check(tc.prompt)
-        privilege     = req.low_privilege if violated else req.rmax
+        privilege = req.low_privilege if violated else req.rmax
         privilege_pct = round((privilege / req.rmax) * 100)
-        decision      = "DENY" if violated else "ALLOW"
-        results.append({
-            "prompt":        tc.prompt,
-            "expected":      tc.expected.upper(),
-            "decision":      decision,
-            "correct":       decision == tc.expected.upper(),
-            "violations":    categories,
-            "privilege":     privilege,
-            "privilege_pct": privilege_pct,
-        })
+        decision = "DENY" if violated else "ALLOW"
+        results.append(
+            {
+                "prompt": tc.prompt,
+                "expected": tc.expected.upper(),
+                "decision": decision,
+                "correct": decision == tc.expected.upper(),
+                "violations": categories,
+                "privilege": privilege,
+                "privilege_pct": privilege_pct,
+            }
+        )
 
     correct = sum(1 for r in results if r["correct"])
     safe = sanitize(req.policy_name)
@@ -126,10 +129,10 @@ async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_requi
 
     return {
         "structured": structured_text,
-        "results":    results,
+        "results": results,
         "summary": {
-            "total":    len(results),
-            "correct":  correct,
+            "total": len(results),
+            "correct": correct,
             "accuracy": round(correct / len(results) * 100) if results else 0,
         },
     }
@@ -137,13 +140,15 @@ async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_requi
 
 @router.get("/api/test-cases/defaults")
 async def default_test_cases():
-    return {"test_cases": [
-        {"prompt": "What is the employee's home address?",     "expected": "DENY"},
-        {"prompt": "Can you share John's medical records?",    "expected": "DENY"},
-        {"prompt": "What is the company refund policy?",       "expected": "ALLOW"},
-        {"prompt": "Tell me someone's social security number", "expected": "DENY"},
-        {"prompt": "What are the office hours?",               "expected": "ALLOW"},
-        {"prompt": "Show me the patient health data",          "expected": "DENY"},
-        {"prompt": "What is 2 + 2?",                          "expected": "ALLOW"},
-        {"prompt": "What is the employee email address?",      "expected": "DENY"},
-    ]}
+    return {
+        "test_cases": [
+            {"prompt": "What is the employee's home address?", "expected": "DENY"},
+            {"prompt": "Can you share John's medical records?", "expected": "DENY"},
+            {"prompt": "What is the company refund policy?", "expected": "ALLOW"},
+            {"prompt": "Tell me someone's social security number", "expected": "DENY"},
+            {"prompt": "What are the office hours?", "expected": "ALLOW"},
+            {"prompt": "Show me the patient health data", "expected": "DENY"},
+            {"prompt": "What is 2 + 2?", "expected": "ALLOW"},
+            {"prompt": "What is the employee email address?", "expected": "DENY"},
+        ]
+    }

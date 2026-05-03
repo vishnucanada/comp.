@@ -1,4 +1,5 @@
 """Chat routes: blocking /api/chat and streaming /api/chat/stream."""
+
 import asyncio
 import json
 import os
@@ -32,10 +33,10 @@ async def chat(request: Request, req: ChatRequest):
     if decision == "DENY":
         rules = ", ".join(violations)
         return {
-            "decision":   "DENY",
+            "decision": "DENY",
             "violations": violations,
-            "response":   f"ERROR this prompt has been blocked by policy [{rules}]",
-            "model":      "policy-enforcer",
+            "response": f"ERROR this prompt has been blocked by policy [{rules}]",
+            "model": "policy-enforcer",
         }
 
     if req.policy_name:
@@ -43,12 +44,21 @@ async def chat(request: Request, req: ChatRequest):
         if model is not None:
             loop = asyncio.get_event_loop()
             response, model_name = await loop.run_in_executor(
-                None, nlpn_generate, model, tokenizer, req.message,
+                None,
+                nlpn_generate,
+                model,
+                tokenizer,
+                req.message,
                 sanitize(req.policy_name),
             )
-            return {"decision": "ALLOW", "violations": [], "response": response, "model": model_name}
+            return {
+                "decision": "ALLOW",
+                "violations": [],
+                "response": response,
+                "model": model_name,
+            }
 
-    history  = [{"role": m.role, "content": m.content} for m in req.history]
+    history = [{"role": m.role, "content": m.content} for m in req.history]
     response, model_name = get_response(req.message, history)
     return {"decision": "ALLOW", "violations": [], "response": response, "model": model_name}
 
@@ -74,7 +84,12 @@ async def chat_stream(request: Request, req: StreamChatRequest):
                 loop = asyncio.get_event_loop()
                 safe = sanitize(req.policy_name)
                 response, model_name = await loop.run_in_executor(
-                    None, nlpn_generate, model, tokenizer, req.message, safe,
+                    None,
+                    nlpn_generate,
+                    model,
+                    tokenizer,
+                    req.message,
+                    safe,
                 )
                 for word in response.split():
                     yield f"data: {json.dumps({'type': 'chunk', 'text': word + ' '})}\n\n"
@@ -86,8 +101,9 @@ async def chat_stream(request: Request, req: StreamChatRequest):
         if ollama:
             q: queue.Queue = queue.Queue()
             history = [{"role": m.role, "content": m.content} for m in req.history]
-            Thread(target=ollama_stream_to_queue,
-                   args=(req.message, history, ollama, q), daemon=True).start()
+            Thread(
+                target=ollama_stream_to_queue, args=(req.message, history, ollama, q), daemon=True
+            ).start()
             loop = asyncio.get_event_loop()
             while True:
                 item = await loop.run_in_executor(None, q.get)
@@ -100,7 +116,7 @@ async def chat_stream(request: Request, req: StreamChatRequest):
         # Anthropic fallback (non-streaming)
         if os.environ.get("ANTHROPIC_API_KEY"):
             history = [{"role": m.role, "content": m.content} for m in req.history]
-            loop   = asyncio.get_event_loop()
+            loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, anthropic_chat, req.message, history)
             if result:
                 text, model_name = result
@@ -108,9 +124,11 @@ async def chat_stream(request: Request, req: StreamChatRequest):
                 yield f"data: {json.dumps({'type': 'done', 'model': model_name})}\n\n"
                 return
 
-        msg = (f"No LLM backend detected. "
-               f"Run `ollama pull {OLLAMA_PREFERRED} && ollama serve`, "
-               f"or set ANTHROPIC_API_KEY.")
+        msg = (
+            f"No LLM backend detected. "
+            f"Run `ollama pull {OLLAMA_PREFERRED} && ollama serve`, "
+            f"or set ANTHROPIC_API_KEY."
+        )
         yield f"data: {json.dumps({'type': 'chunk', 'text': msg})}\n\n"
         yield f"data: {json.dumps({'type': 'done', 'model': 'none'})}\n\n"
 

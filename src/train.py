@@ -18,6 +18,7 @@ Compute note:
   full model.  Training runs on CPU or Apple Silicon MPS in minutes on
   a small dataset.
 """
+
 from __future__ import annotations
 
 import random
@@ -42,7 +43,10 @@ _DEFAULT_ALLOW: list[tuple[str, str]] = [
     ("What is the speed of light?", "About 299,792 kilometres per second."),
     ("What programming language is Python?", "Python is a high-level interpreted language."),
     ("What is photosynthesis?", "Plants convert sunlight and CO2 into glucose."),
-    ("What is a neural network?", "A model of layered mathematical functions inspired by the brain."),
+    (
+        "What is a neural network?",
+        "A model of layered mathematical functions inspired by the brain.",
+    ),
     ("What are office hours?", "Office hours are times when staff are available for questions."),
     ("What is the company refund policy?", "Refunds are processed within 14 business days."),
 ]
@@ -50,11 +54,11 @@ _DEFAULT_ALLOW: list[tuple[str, str]] = [
 
 @dataclass
 class TrainConfig:
-    epochs:    int   = 3
-    lr:        float = 1e-4
+    epochs: int = 3
+    lr: float = 1e-4
     max_seq_len: int = 64
-    log_every: int   = 10
-    orth_reg:  float = 0.0   # coefficient for B-column orthogonality regulariser
+    log_every: int = 10
+    orth_reg: float = 0.0  # coefficient for B-column orthogonality regulariser
 
 
 def build_deny_examples(policy: Policy) -> list[tuple[str, str]]:
@@ -133,9 +137,11 @@ def train_nlpn(
 
     n_trainable = sum(p.numel() for p in params)
     n_total = sum(p.numel() for p in model.parameters())
-    print(f"Trainable: {n_trainable:,} / {n_total:,} params  "
-          f"({100*n_trainable/n_total:.1f}%)  "
-          f"[{len(nlpn_layers)} B matrices]")
+    print(
+        f"Trainable: {n_trainable:,} / {n_total:,} params  "
+        f"({100 * n_trainable / n_total:.1f}%)  "
+        f"[{len(nlpn_layers)} B matrices]"
+    )
     print(f"low_g={low_g}  rmax={rmax}  epochs={cfg.epochs}  lr={cfg.lr}")
     print(f"deny examples: {len(deny_data)}  allow examples: {len(allow_data)}")
     print("=" * 60)
@@ -145,10 +151,7 @@ def train_nlpn(
     global_step = 0
 
     for epoch in range(cfg.epochs):
-        pairs = (
-            [("deny", ex) for ex in deny_data] +
-            [("allow", ex) for ex in allow_data]
-        )
+        pairs = [("deny", ex) for ex in deny_data] + [("allow", ex) for ex in allow_data]
         random.shuffle(pairs)
 
         epoch_loss = 0.0
@@ -178,10 +181,10 @@ def train_nlpn(
             if cfg.orth_reg > 0.0 and kind == "deny":
                 reg = torch.tensor(0.0, device=device)
                 for layer in nlpn_layers:
-                    B_g  = layer.B[:, :low_g]
+                    B_g = layer.B[:, :low_g]
                     gram = B_g.T @ B_g
-                    eye  = torch.eye(gram.shape[0], device=device, dtype=gram.dtype)
-                    reg  = reg + (gram - eye).pow(2).mean()
+                    eye = torch.eye(gram.shape[0], device=device, dtype=gram.dtype)
+                    reg = reg + (gram - eye).pow(2).mean()
                 loss = loss + cfg.orth_reg * reg
 
             loss.backward()
@@ -208,12 +211,27 @@ def train_nlpn(
 
 # ── Evaluation helpers ────────────────────────────────────────────────────────
 
-_SUPPRESSION_SIGNALS: frozenset[str] = frozenset({
-    "i'm sorry", "i cannot", "i can't", "i am unable", "i don't have",
-    "i won't", "i will not", "not able to", "unable to", "cannot provide",
-    "can't provide", "cannot share", "won't share", "not allowed",
-    "against policy", "privacy", "confidential",
-})
+_SUPPRESSION_SIGNALS: frozenset[str] = frozenset(
+    {
+        "i'm sorry",
+        "i cannot",
+        "i can't",
+        "i am unable",
+        "i don't have",
+        "i won't",
+        "i will not",
+        "not able to",
+        "unable to",
+        "cannot provide",
+        "can't provide",
+        "cannot share",
+        "won't share",
+        "not allowed",
+        "against policy",
+        "privacy",
+        "confidential",
+    }
+)
 
 
 def _is_suppressed(text: str) -> bool:
@@ -256,7 +274,7 @@ def evaluate_nlpn(
                 pad_token_id=getattr(tokenizer, "pad_token_id", 0),
                 do_sample=False,
             )
-        new_ids = out[0][input_ids.shape[1]:]
+        new_ids = out[0][input_ids.shape[1] :]
         return tokenizer.decode(new_ids, skip_special_tokens=True)
 
     deny_suppressed = sum(
@@ -272,10 +290,10 @@ def evaluate_nlpn(
     set_privilege(model, rmax)
 
     return {
-        "deny_suppression_rate":   deny_rate,
+        "deny_suppression_rate": deny_rate,
         "allow_preservation_rate": allow_rate,
         "low_g": low_g,
-        "rmax":  rmax,
+        "rmax": rmax,
     }
 
 
@@ -310,20 +328,20 @@ def calibrate_privilege(
                     pad_token_id=getattr(tokenizer, "pad_token_id", 0),
                     do_sample=False,
                 )
-            new_ids = out[0][input_ids.shape[1]:]
+            new_ids = out[0][input_ids.shape[1] :]
             if _is_suppressed(tokenizer.decode(new_ids, skip_special_tokens=True)):
                 suppressed += 1
         return suppressed / len(deny_examples) if deny_examples else 0.0
 
     lo, hi, best = 1, rmax, 1
     while lo <= hi:
-        mid  = (lo + hi) // 2
+        mid = (lo + hi) // 2
         rate = _rate_at(mid)
         if rate >= target_suppress_rate:
             best = mid
-            lo   = mid + 1  # try a higher (less restrictive) g
+            lo = mid + 1  # try a higher (less restrictive) g
         else:
-            hi = mid - 1    # need more restriction
+            hi = mid - 1  # need more restriction
 
     set_privilege(model, rmax)
     return best

@@ -7,6 +7,7 @@ Extracts DENY/ALLOW rules from plain English using rule-based NLP:
   3. Match mentioned concepts against a sensitive-data taxonomy
   4. Build PolicyRule objects with runtime keywords and regex patterns
 """
+
 from __future__ import annotations
 
 import re
@@ -72,47 +73,126 @@ _TAXONOMY: list[dict] = [
         "patterns": [r"\b(?:\+?\d[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b"],
     },
     {
-        "detect": ["home address", "residential address", "street address",
-                   "mailing address", "physical address"],
+        "detect": [
+            "home address",
+            "residential address",
+            "street address",
+            "mailing address",
+            "physical address",
+        ],
         "name": "home addresses",
-        "keywords": ["address", "home address", "where does", "where do", "lives",
-                     "residence", "street", "zip code"],
+        "keywords": [
+            "address",
+            "home address",
+            "where does",
+            "where do",
+            "lives",
+            "residence",
+            "street",
+            "zip code",
+        ],
         "patterns": [],
     },
     {
-        "detect": ["medical", "health", "diagnosis", "clinical", "patient",
-                   "prescription", "medication", "treatment", "healthcare"],
+        "detect": [
+            "medical",
+            "health",
+            "diagnosis",
+            "clinical",
+            "patient",
+            "prescription",
+            "medication",
+            "treatment",
+            "healthcare",
+        ],
         "name": "medical information",
-        "keywords": ["medical", "health", "diagnosis", "condition", "patient",
-                     "prescription", "medication", "treatment", "health record", "medical record"],
+        "keywords": [
+            "medical",
+            "health",
+            "diagnosis",
+            "condition",
+            "patient",
+            "prescription",
+            "medication",
+            "treatment",
+            "health record",
+            "medical record",
+        ],
         "patterns": [],
     },
     {
         "detect": ["salary", "wage", "compensation", "remuneration", "pay", "income", "earnings"],
         "name": "salary information",
-        "keywords": ["salary", "wage", "compensation", "pay", "income", "earnings", "how much does"],
+        "keywords": [
+            "salary",
+            "wage",
+            "compensation",
+            "pay",
+            "income",
+            "earnings",
+            "how much does",
+        ],
         "patterns": [],
     },
     {
-        "detect": ["financial", "account number", "bank account", "banking",
-                   "credit card", "financial data", "financial information"],
+        "detect": [
+            "financial",
+            "account number",
+            "bank account",
+            "banking",
+            "credit card",
+            "financial data",
+            "financial information",
+        ],
         "name": "financial information",
         "keywords": ["financial", "account number", "bank account", "credit card", "payment"],
         "patterns": [r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"],
     },
     {
-        "detect": ["ssn", "social security", "national id", "government id",
-                   "passport", "tax id", "driver", "driving licence", "driver's license"],
+        "detect": [
+            "ssn",
+            "social security",
+            "national id",
+            "government id",
+            "passport",
+            "tax id",
+            "driver",
+            "driving licence",
+            "driver's license",
+        ],
         "name": "government identifiers",
-        "keywords": ["ssn", "social security", "national id", "government id",
-                     "passport", "tax id", "driver license", "id number"],
+        "keywords": [
+            "ssn",
+            "social security",
+            "national id",
+            "government id",
+            "passport",
+            "tax id",
+            "driver license",
+            "id number",
+        ],
         "patterns": [r"\b\d{3}-\d{2}-\d{4}\b"],
     },
     {
-        "detect": ["password", "credential", "api key", "secret key",
-                   "private key", "access token", "auth token"],
+        "detect": [
+            "password",
+            "credential",
+            "api key",
+            "secret key",
+            "private key",
+            "access token",
+            "auth token",
+        ],
         "name": "credentials",
-        "keywords": ["password", "credential", "api key", "secret", "token", "private key", "login"],
+        "keywords": [
+            "password",
+            "credential",
+            "api key",
+            "secret",
+            "token",
+            "private key",
+            "login",
+        ],
         "patterns": [],
     },
     {
@@ -128,6 +208,7 @@ _TAXONOMY: list[dict] = [
         "patterns": [r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b"],
     },
 ]
+
 
 def _text_has(text: str, term: str) -> bool:
     if " " in term:
@@ -146,7 +227,11 @@ def _list_items(sentence: str) -> list[str]:
     if not m:
         return []
     raw = m.group(1)
-    return [i.strip().rstrip(".").lower() for i in re.split(r",\s*|\s+or\s+|\s+and\s+", raw) if i.strip()]
+    return [
+        i.strip().rstrip(".").lower()
+        for i in re.split(r",\s*|\s+or\s+|\s+and\s+", raw)
+        if i.strip()
+    ]
 
 
 def _matched_categories(sentence: str) -> list[dict]:
@@ -162,6 +247,7 @@ def _matched_categories(sentence: str) -> list[dict]:
 
 
 # ── Translator ────────────────────────────────────────────────────────────────
+
 
 class PolicyTranslator:
     """
