@@ -65,7 +65,11 @@ class AuditEntry:
 
 
 class AuditLog:
-    """Article 30 audit log. Stores prompt hashes, not raw text (data minimisation)."""
+    """Inference-time audit trail. Records prompt hashes (not raw text) and enforcement decisions.
+
+    Supports Article 30-style record-keeping as one component of a compliance programme.
+    Not a standalone GDPR compliance solution — see module docstring for full scope.
+    """
 
     def __init__(
         self,

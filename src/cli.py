@@ -7,6 +7,7 @@ Subcommands
   comp train     <policy>        Fine-tune NLPN layers and save checkpoint
   comp eval      <policy> <ckpt> Evaluate suppression/preservation metrics
   comp calibrate <policy> <ckpt> Find the optimal low_g for a checkpoint
+  comp benchmark <ckpt>          Measure forward-pass latency overhead
   comp serve                     Start the web dashboard
 """
 
@@ -96,6 +97,29 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
     print(f"\nOptimal low_g = {low_g}  (rmax={rmax}, target={args.target:.0%})")
 
 
+def cmd_benchmark(args: argparse.Namespace) -> None:
+    import src
+    from src.enforcer import benchmark_overhead, get_device, load_model
+
+    device = get_device()
+    print(f"Loading {args.model} ...")
+    model, _ = load_model(args.model, device)
+    rmax = src.detect_rmax(model)
+    src.wrap_with_nlpn(model, rmax=rmax)
+    src.load_nlpn(model, args.checkpoint)
+
+    print(f"\nBenchmarking {args.runs} runs × seq_len={args.seq_len} ...")
+    results = benchmark_overhead(model, n_runs=args.runs, seq_len=args.seq_len)
+
+    print(f"\n  NLPN layers : {results['n_nlpn_layers']}")
+    print(f"  rmax        : {results['rmax']}")
+    for key in ("privilege_1", "privilege_mid", "privilege_rmax"):
+        if key in results:
+            label = {"privilege_1": "g=1 (low)", "privilege_mid": "g=mid", "privilege_rmax": "g=rmax (full)"}[key]
+            r = results[key]
+            print(f"  {label:<20} mean={r['mean_ms']}ms  min={r['min_ms']}ms  max={r['max_ms']}ms")
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     try:
         import uvicorn
@@ -133,6 +157,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cal.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
     p_cal.add_argument("--target", type=float, default=0.9)
     p_cal.set_defaults(func=cmd_calibrate)
+
+    p_bench = sub.add_parser("benchmark", help="Measure forward-pass latency overhead")
+    p_bench.add_argument("checkpoint")
+    p_bench.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
+    p_bench.add_argument("--runs", type=int, default=100)
+    p_bench.add_argument("--seq-len", type=int, default=32, dest="seq_len")
+    p_bench.set_defaults(func=cmd_benchmark)
 
     p_serve = sub.add_parser("serve", help="Start the web dashboard")
     p_serve.add_argument("--host", default="0.0.0.0")

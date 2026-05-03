@@ -12,6 +12,7 @@ Enforcer   →  wrap_with_nlpn            (g → rank-restricted forward pass)
 
 from .enforcer import (
     DEFAULT_MODEL_ID,
+    benchmark_overhead,
     detect_rmax,
     get_device,
     get_rmax,
@@ -24,7 +25,14 @@ from .enforcer import (
 from .gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
 from .nlpn import NLPNLinear
 from .policy import Policy, PolicyAllocator, PolicyCompiler
-from .train import TrainConfig, build_deny_examples, calibrate_privilege, evaluate_nlpn, train_nlpn
+from .train import (
+    TrainConfig,
+    build_adversarial_examples,
+    build_deny_examples,
+    calibrate_privilege,
+    evaluate_nlpn,
+    train_nlpn,
+)
 from .translator import PolicyTranslator
 
 __all__ = [
@@ -38,6 +46,7 @@ __all__ = [
     "get_device",
     "load_model",
     "DEFAULT_MODEL_ID",
+    "benchmark_overhead",
     "Policy",
     "PolicyCompiler",
     "PolicyAllocator",
@@ -48,6 +57,7 @@ __all__ = [
     "verify_audit_log",
     "train_nlpn",
     "build_deny_examples",
+    "build_adversarial_examples",
     "TrainConfig",
     "evaluate_nlpn",
     "calibrate_privilege",

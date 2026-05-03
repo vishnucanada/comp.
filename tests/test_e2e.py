@@ -17,9 +17,11 @@ import src
 from src.enforcer import load_nlpn, save_nlpn, set_privilege, wrap_with_nlpn
 from src.gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
 from src.policy import Policy, PolicyAllocator, PolicyCompiler
+from src.enforcer import benchmark_overhead
 from src.train import (
     _DEFAULT_ALLOW,
     TrainConfig,
+    build_adversarial_examples,
     build_deny_examples,
     calibrate_privilege,
     evaluate_nlpn,
