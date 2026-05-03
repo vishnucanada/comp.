@@ -44,4 +44,3 @@ class TrainRequest(BaseModel):
     epochs: int = Field(3, ge=1, le=20)
     lr: float = Field(1e-4, gt=0)
     orth_reg: float = Field(0.0, ge=0)
-    adversarial: bool = False

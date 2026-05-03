@@ -17,7 +17,6 @@ from ..backends import (
     ollama_stream_to_queue,
 )
 from ..config import OLLAMA_PREFERRED
-from ..deps import limiter
 from ..helpers import policy_check, sanitize
 from ..registry import model_registry
 from ..schemas import ChatRequest, StreamChatRequest
@@ -26,7 +25,6 @@ router = APIRouter()
 
 
 @router.post("/api/chat")
-@limiter.limit("30/minute")
 async def chat(request: Request, req: ChatRequest):
     decision, violations = policy_check(req.policy_name, req.message)
 
@@ -64,7 +62,6 @@ async def chat(request: Request, req: ChatRequest):
 
 
 @router.post("/api/chat/stream")
-@limiter.limit("30/minute")
 async def chat_stream(request: Request, req: StreamChatRequest):
     decision, violations = policy_check(req.policy_name, req.message)
 

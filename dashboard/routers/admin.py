@@ -1,10 +1,12 @@
-"""Admin routes: RBAC, usage metering, audit log, policy library."""
+"""Admin routes: audit log and policy library."""
 
-from fastapi import APIRouter, Depends, Request
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..config import ROOT
-from ..rbac import get_admin_log, log_admin_action, require_admin, require_write_access
-from ..tenancy import get_tenant_id, get_usage
+from ..deps import _require_auth
+from ..helpers import _persist_policy, get_admin_log, log_admin_action
 
 router = APIRouter(prefix="/api/admin")
 
@@ -12,19 +14,8 @@ _LIBRARY_DIR = ROOT / "policies" / "library"
 
 
 @router.get("/audit-log")
-async def audit_log(limit: int = 100, _role=Depends(require_admin)):
+async def audit_log(limit: int = 100, _auth=Depends(_require_auth)):
     return {"entries": get_admin_log(limit=limit)}
-
-
-@router.get("/usage")
-async def usage(request: Request, _role=Depends(require_admin)):
-    tenant_id = get_tenant_id(request)
-    return {"tenant": tenant_id, "usage": get_usage(tenant_id)}
-
-
-@router.get("/usage/{tenant_id}")
-async def tenant_usage(tenant_id: str, _role=Depends(require_admin)):
-    return {"tenant": tenant_id, "usage": get_usage(tenant_id)}
 
 
 @router.get("/policy-library")
@@ -43,31 +34,19 @@ async def policy_library():
 @router.get("/policy-library/{policy_id}")
 async def get_library_policy(policy_id: str):
     """Return the content of a library policy."""
-    import re
-
     safe = re.sub(r"[^a-zA-Z0-9_-]", "", policy_id)
     f = _LIBRARY_DIR / f"{safe}.txt"
     if not f.exists():
-        from fastapi import HTTPException
-
         raise HTTPException(404, "Library policy not found")
     return {"id": safe, "content": f.read_text()}
 
 
 @router.post("/policy-library/{policy_id}/install")
-async def install_library_policy(
-    policy_id: str, request: Request, _role=Depends(require_write_access)
-):
+async def install_library_policy(policy_id: str, request: Request, _auth=Depends(_require_auth)):
     """Copy a library policy into the tenant's active policies directory."""
-    import re
-
-    from ..helpers import _persist_policy
-
     safe = re.sub(r"[^a-zA-Z0-9_-]", "", policy_id)
     f = _LIBRARY_DIR / f"{safe}.txt"
     if not f.exists():
-        from fastapi import HTTPException
-
         raise HTTPException(404, "Library policy not found")
 
     content = f.read_text()

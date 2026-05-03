@@ -1,12 +1,12 @@
-"""Policy CRUD, version history, and enact (translate + test) routes."""
+"""Policy CRUD and enact (translate + test) routes."""
 
 import contextlib
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
-from ..config import HISTORY_DIR, POLICIES_DIR
-from ..deps import _require_auth, limiter
+from ..config import POLICIES_DIR
+from ..deps import _require_auth
 from ..helpers import _persist_policy, _safe_name, sanitize
 from ..schemas import EnactRequest, PolicySaveRequest
 
@@ -39,36 +39,6 @@ async def get_policy(name: str):
     return {"name": safe, "description": description, "structured": structured}
 
 
-@router.get("/api/policies/{name}/history")
-async def policy_history(name: str):
-    safe = _safe_name(name)
-    archive = HISTORY_DIR / safe
-    if not archive.exists():
-        return {"name": safe, "versions": []}
-    versions = sorted(
-        {p.stem for p in archive.iterdir() if p.suffix in (".json", ".txt")},
-        reverse=True,
-    )
-    return {"name": safe, "versions": versions}
-
-
-@router.get("/api/policies/{name}/versions/{version}")
-async def policy_version(name: str, version: str):
-    safe = _safe_name(name)
-    ver = sanitize(version)
-    archive = HISTORY_DIR / safe
-    txt_v = archive / f"{ver}.txt"
-    meta_v = archive / f"{ver}.json"
-    if not txt_v.exists() and not meta_v.exists():
-        raise HTTPException(404, "Version not found")
-    structured = txt_v.read_text() if txt_v.exists() else ""
-    description = ""
-    if meta_v.exists():
-        with contextlib.suppress(Exception):
-            description = json.loads(meta_v.read_text()).get("description", "")
-    return {"name": safe, "version": ver, "description": description, "structured": structured}
-
-
 @router.post("/api/policies")
 async def save_policy(req: PolicySaveRequest, _auth=Depends(_require_auth)):
     safe = _safe_name(req.name)
@@ -91,8 +61,7 @@ async def delete_policy(name: str, _auth=Depends(_require_auth)):
 
 
 @router.post("/api/enact")
-@limiter.limit("10/minute")
-async def enact_policy(request: Request, req: EnactRequest, _auth=Depends(_require_auth)):
+async def enact_policy(req: EnactRequest, _auth=Depends(_require_auth)):
     from src.policy import PolicyCompiler
     from src.translator import PolicyTranslator
 

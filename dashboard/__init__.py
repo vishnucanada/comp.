@@ -18,7 +18,6 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 
 from .config import ALLOWED_ORIGINS, STATIC_DIR  # noqa: E402
-from .deps import RateLimitExceeded, limiter, rate_limit_exceeded_handler  # noqa: E402
 from .routers import admin as admin_router  # noqa: E402
 from .routers import chat, models, openai_compat, policies, training  # noqa: E402
 
@@ -27,13 +26,11 @@ app = FastAPI(
     description="Policy-enforced LLM deployment via rank-restricted transformer layers.",
     version="0.2.0",
 )
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Tenant-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
 app.include_router(chat.router)
