@@ -21,7 +21,6 @@ dashboard = [
     "fastapi>=0.100",
     "uvicorn>=0.23",
     "pydantic>=2.0",
-    "slowapi>=0.1.9",
 ]
 semantic = [
     "sentence-transformers>=2.7",
