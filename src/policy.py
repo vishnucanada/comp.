@@ -250,12 +250,11 @@ class PolicyAllocator:
         text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         violated, categories = self.compiler.check(text, history)
 
-        if not violated and self.default_deny:
-            if any(p.search(text) for p in _INJECTION_PATTERNS):
-                violated = True
-                categories = ["[suspicious-pattern]"]
-                print(f"  [policy] DENY (injection pattern, no keyword match) → {categories}")
-                return self.low_privilege
+        if not violated and self.default_deny and any(p.search(text) for p in _INJECTION_PATTERNS):
+            violated = True
+            categories = ["[suspicious-pattern]"]
+            print(f"  [policy] DENY (injection pattern, no keyword match) → {categories}")
+            return self.low_privilege
 
         if violated:
             print(f"  [policy] DENY → {categories}  (privilege: {rmax} → {self.low_privilege})")

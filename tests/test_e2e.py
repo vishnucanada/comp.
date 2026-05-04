@@ -14,10 +14,9 @@ import torch
 import torch.nn as nn
 
 import src
-from src.enforcer import load_nlpn, save_nlpn, set_privilege, wrap_with_nlpn
+from src.enforcer import benchmark_overhead, load_nlpn, save_nlpn, set_privilege, wrap_with_nlpn
 from src.gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
 from src.policy import Policy, PolicyAllocator, PolicyCompiler
-from src.enforcer import benchmark_overhead
 from src.train import (
     _DEFAULT_ALLOW,
     TrainConfig,
