@@ -9,12 +9,10 @@ ROOT = Path(__file__).parent.parent
 # Directories
 STATIC_DIR = Path(__file__).parent / "static"
 POLICIES_DIR = ROOT / "policies"
-POLICY_LIBRARY = ROOT / "policies" / "library"
 CHECKPOINTS_DIR = ROOT / "nlpn_checkpoints"
-AUDIT_DIR = ROOT / "audit"
 
 POLICIES_DIR.mkdir(exist_ok=True)
-AUDIT_DIR.mkdir(exist_ok=True)
+(ROOT / "audit").mkdir(exist_ok=True)
 
 # LLM backend settings
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")

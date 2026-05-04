@@ -299,13 +299,6 @@ class PolicyTranslator:
 
         return Policy(name=_infer_name(text), rules=rules)
 
-    def translate_and_save(self, text: str, path: str | Path) -> Policy:
-        policy = self.translate(text)
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(policy.to_text())
-        return policy
-
 
 def _infer_name(text: str) -> str:
     m = re.search(r"^(?:policy[:\s]+|from[:\s]+|re[:\s]+|subject[:\s]+)(.+)$", text, re.I | re.M)
