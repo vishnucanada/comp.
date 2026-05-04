@@ -245,16 +245,96 @@ def _matched_categories(sentence: str) -> list[dict]:
     return list(seen.values())
 
 
+# ── LLM prompt template ───────────────────────────────────────────────────────
+
+_LLM_PROMPT = """\
+You are a policy compiler. Given a plain English data-handling policy, output ONLY a structured policy in this exact format and nothing else:
+
+name: <short descriptive name>
+
+DENY: <category name>
+  match: <comma-separated keywords>
+
+ALLOW: <allowed category>
+
+Rules:
+- One DENY block per restricted data type
+- match: lists the words/phrases that would appear in user queries about that data
+- Include only DENY/ALLOW lines and the name header — no explanations or prose
+
+Policy text:
+{policy_text}
+"""
+
+
 # ── Translator ────────────────────────────────────────────────────────────────
 
 
 class PolicyTranslator:
     """
     Translate plain English policy text into a structured Policy object.
-    Uses rule-based NLP — no API key required.
+    Tries Anthropic, then Ollama, then falls back to rule-based NLP.
     """
 
     def translate(self, text: str) -> Policy:
+        for attempt in (self._try_anthropic, self._try_ollama):
+            result = attempt(text)
+            if result is not None:
+                return result
+        return self._rule_translate(text)
+
+    def _try_anthropic(self, text: str) -> Policy | None:
+        import os
+
+        key = os.environ.get("ANTHROPIC_API_KEY")
+        if not key:
+            return None
+        try:
+            import anthropic
+
+            resp = anthropic.Anthropic(api_key=key).messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=512,
+                messages=[{"role": "user", "content": _LLM_PROMPT.format(policy_text=text)}],
+            )
+            structured = resp.content[0].text.strip()
+            return Policy.from_text(structured)
+        except Exception:
+            return None
+
+    def _try_ollama(self, text: str) -> Policy | None:
+        import json
+        import urllib.request as _urllib
+
+        try:
+            req = _urllib.Request("http://localhost:11434/api/tags")
+            with _urllib.urlopen(req, timeout=2) as r:
+                models = [m["name"] for m in json.loads(r.read()).get("models", [])]
+            if not models:
+                return None
+            model = models[0]
+
+            body = json.dumps(
+                {
+                    "model": model,
+                    "messages": [
+                        {"role": "user", "content": _LLM_PROMPT.format(policy_text=text)}
+                    ],
+                    "stream": False,
+                }
+            ).encode()
+            req2 = _urllib.Request(
+                "http://localhost:11434/api/chat",
+                data=body,
+                headers={"Content-Type": "application/json"},
+            )
+            with _urllib.urlopen(req2, timeout=30) as r:
+                structured = json.loads(r.read())["message"]["content"].strip()
+            return Policy.from_text(structured)
+        except Exception:
+            return None
+
+    def _rule_translate(self, text: str) -> Policy:
         sentences = _split_sentences(text)
         deny: dict[str, dict] = {}
         allow: list[str] = []

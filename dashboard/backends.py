@@ -87,12 +87,21 @@ def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str
     from src.enforcer import get_rmax, set_privilege
     from src.policy import PolicyAllocator, PolicyCompiler
 
+    from .config import CHECKPOINTS_DIR
+
     rmax = get_rmax(model)
     enc = tokenizer(message, return_tensors="pt")
     policy = _load_policy(policy_name)
 
+    low_g = 1
+    try:
+        cfg = json.loads((CHECKPOINTS_DIR / policy_name / "nlpn_config.json").read_text())
+        low_g = cfg.get("low_g", 1)
+    except Exception:
+        pass
+
     if policy:
-        allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=1)
+        allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=low_g)
         g = allocator.allocate(model, enc["input_ids"], rmax=rmax)
     else:
         g = rmax

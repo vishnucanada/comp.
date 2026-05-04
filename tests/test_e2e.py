@@ -350,7 +350,7 @@ def test_gdpr_audit_log_integrity(tmp_path, model, tokenizer):
 
 def test_evaluate_nlpn_keys_and_range(model, tokenizer, policy):
     result = evaluate_nlpn(
-        model, tokenizer, build_deny_examples(policy), _DEFAULT_ALLOW, rmax=8, low_g=1
+        model, tokenizer, build_deny_examples(policy), _DEFAULT_ALLOW, rmax=8, low_g=1, policy=policy
     )
     assert set(result) >= {"deny_suppression_rate", "allow_preservation_rate", "low_g", "rmax"}
     assert 0.0 <= result["deny_suppression_rate"] <= 1.0
@@ -360,10 +360,18 @@ def test_evaluate_nlpn_keys_and_range(model, tokenizer, policy):
 def test_calibrate_returns_valid_g(model, tokenizer, policy):
     from src.nlpn import NLPNLinear
 
-    low_g = calibrate_privilege(model, tokenizer, build_deny_examples(policy), rmax=8)
+    low_g = calibrate_privilege(model, tokenizer, build_deny_examples(policy), rmax=8, policy=policy)
     assert 1 <= low_g <= 8
     # model must be restored to full privilege after calibration
     assert all(m.privilege == 8 for m in model.modules() if isinstance(m, NLPNLinear))
+
+
+def test_save_nlpn_persists_low_g(model, tmp_path):
+    import json
+
+    save_nlpn(model, tmp_path / "ckpt", model_id="test/tiny", low_g=3)
+    cfg = json.loads((tmp_path / "ckpt" / "nlpn_config.json").read_text())
+    assert cfg.get("low_g") == 3
 
 
 # ── 9. Paraphrase and injection robustness ───────────────────────────────────

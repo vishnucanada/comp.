@@ -30,3 +30,13 @@ async def start_training(name: str, req: TrainRequest, _auth=Depends(_require_au
 @router.get("/api/train/status")
 async def training_status():
     return {"jobs": training_registry.all_status()}
+
+
+@router.get("/api/train/{name}/status")
+async def job_status(name: str, _auth=Depends(_require_auth)):
+    safe = _safe_name(name)
+    return {
+        "name": safe,
+        "status": training_registry.status(safe),
+        "progress": training_registry.progress(safe),
+    }

@@ -45,14 +45,15 @@ def cmd_train(args: argparse.Namespace) -> None:
         deny_examples=deny_ex,
     )
 
+    low_g = None
     if args.calibrate:
-        low_g = calibrate_privilege(model, tokenizer, deny_ex, rmax=rmax)
+        low_g = calibrate_privilege(model, tokenizer, deny_ex, rmax=rmax, policy=policy)
         print(f"\nCalibrated low_g = {low_g}  (rmax={rmax})")
 
     save_path = (
         Path(args.output) if args.output else Path("nlpn_checkpoints") / Path(args.policy).stem
     )
-    src.save_nlpn(model, save_path, model_id=args.model)
+    src.save_nlpn(model, save_path, model_id=args.model, low_g=low_g)
     print(f"\nCheckpoint saved → {save_path}/")
 
 
@@ -71,7 +72,7 @@ def cmd_eval(args: argparse.Namespace) -> None:
     model.eval()
 
     deny_ex = build_deny_examples(policy)
-    metrics = evaluate_nlpn(model, tokenizer, deny_ex, _DEFAULT_ALLOW, rmax=rmax)
+    metrics = evaluate_nlpn(model, tokenizer, deny_ex, _DEFAULT_ALLOW, rmax=rmax, policy=policy)
     for k, v in metrics.items():
         print(f"  {k}: {v}")
 
@@ -91,7 +92,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
 
     deny_ex = build_deny_examples(policy)
     low_g = calibrate_privilege(
-        model, tokenizer, deny_ex, rmax=rmax, target_suppress_rate=args.target
+        model, tokenizer, deny_ex, rmax=rmax, target_suppress_rate=args.target, policy=policy
     )
     print(f"\nOptimal low_g = {low_g}  (rmax={rmax}, target={args.target:.0%})")
 

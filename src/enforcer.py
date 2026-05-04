@@ -202,6 +202,7 @@ def save_nlpn(
     model: nn.Module,
     path: str | Path,
     model_id: str | None = None,
+    low_g: int | None = None,
 ) -> None:
     """
     Save NLPN layer weights and config to a directory.
@@ -213,6 +214,7 @@ def save_nlpn(
         model:    Model already wrapped with wrap_with_nlpn().
         path:     Directory to write nlpn_weights.pt and nlpn_config.json into.
         model_id: HuggingFace model ID to record in config (e.g. "Qwen/Qwen2.5-0.5B").
+        low_g:    Calibrated minimum privilege level; stored in config for inference.
     """
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
@@ -236,18 +238,17 @@ def save_nlpn(
     if not layer_meta:
         raise ValueError("No NLPNLinear layers found — call wrap_with_nlpn() first.")
 
+    cfg: dict = {
+        "model_id": model_id,
+        "rmax": get_rmax(model),
+        "n_layers": len(layer_meta),
+        "layers": layer_meta,
+    }
+    if low_g is not None:
+        cfg["low_g"] = low_g
+
     torch.save(weights, path / "nlpn_weights.pt")
-    (path / "nlpn_config.json").write_text(
-        json.dumps(
-            {
-                "model_id": model_id,
-                "rmax": get_rmax(model),
-                "n_layers": len(layer_meta),
-                "layers": layer_meta,
-            },
-            indent=2,
-        )
-    )
+    (path / "nlpn_config.json").write_text(json.dumps(cfg, indent=2))
     print(f"Saved {len(layer_meta)} NLPN layers → {path}")
 
 
