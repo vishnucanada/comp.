@@ -85,19 +85,19 @@ def get_response(message: str, history: list[dict]) -> tuple[str, str]:
 def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str, str]:
     """Generate with rank-restricted NLPN model, applying policy-derived privilege."""
     from src.enforcer import get_rmax, set_privilege
-    from src.policy import PolicyCompiler
+    from src.policy import PolicyAllocator, PolicyCompiler
 
     rmax = get_rmax(model)
+    enc = tokenizer(message, return_tensors="pt")
     policy = _load_policy(policy_name)
-    g = rmax
 
     if policy:
-        violated, _ = PolicyCompiler(policy).check(message)
-        if violated:
-            g = max(1, rmax // 20)
+        allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=1)
+        g = allocator.allocate(model, enc["input_ids"], rmax=rmax)
+    else:
+        g = rmax
 
     set_privilege(model, g)
-    enc = tokenizer(message, return_tensors="pt")
     with torch.no_grad():
         out = model.generate(
             enc["input_ids"],

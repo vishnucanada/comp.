@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 
 from .config import ALLOWED_ORIGINS, STATIC_DIR  # noqa: E402
 from .routers import admin as admin_router  # noqa: E402
-from .routers import chat, models, openai_compat, policies, training  # noqa: E402
+from .routers import chat, models, policies, training  # noqa: E402
 
 app = FastAPI(
     title="comp. — Nested Least-Privilege Networks",
@@ -38,7 +38,6 @@ app.include_router(models.router)
 app.include_router(policies.router)
 app.include_router(training.router)
 app.include_router(admin_router.router)
-app.include_router(openai_compat.router)
 
 
 @app.get("/favicon.png")
