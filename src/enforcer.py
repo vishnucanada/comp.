@@ -307,59 +307,6 @@ def load_nlpn(model: nn.Module, path: str | Path) -> nn.Module:
     return model
 
 
-def benchmark_overhead(
-    model: nn.Module,
-    n_runs: int = 100,
-    seq_len: int = 32,
-) -> dict:
-    """Measure forward-pass latency of the wrapped model at each privilege level.
-
-    Returns mean/min/max in milliseconds at low privilege (g=1), mid (g=rmax//2),
-    and full privilege (g=rmax), plus NLPN layer count and rmax.
-    """
-    import time
-
-    device = next(model.parameters()).device
-    # Token ID 2 is safe across all common tokenizers (0=pad, 1=eos, 2=bos/first real token).
-    dummy_ids = torch.full((1, seq_len), 2, dtype=torch.long, device=device)
-    n_nlpn = sum(1 for m in model.modules() if isinstance(m, NLPNLinear))
-    rmax = get_rmax(model) if n_nlpn > 0 else None
-
-    def _measure(g: int) -> dict:
-        if rmax is not None:
-            set_privilege(model, g)
-        model.eval()
-        # warmup
-        for _ in range(5):
-            with torch.no_grad():
-                model(dummy_ids)
-        times_ms = []
-        for _ in range(n_runs):
-            t0 = time.perf_counter()
-            with torch.no_grad():
-                model(dummy_ids)
-            times_ms.append((time.perf_counter() - t0) * 1000)
-        return {
-            "mean_ms": round(sum(times_ms) / len(times_ms), 3),
-            "min_ms": round(min(times_ms), 3),
-            "max_ms": round(max(times_ms), 3),
-        }
-
-    results: dict = {
-        "n_runs": n_runs,
-        "seq_len": seq_len,
-        "n_nlpn_layers": n_nlpn,
-        "rmax": rmax,
-    }
-    if rmax is not None:
-        results["privilege_1"] = _measure(1)
-        results["privilege_mid"] = _measure(max(1, rmax // 2))
-        results["privilege_rmax"] = _measure(rmax)
-        set_privilege(model, rmax)
-    else:
-        results["base"] = _measure(0)
-    return results
-
 
 def _resolve_parent(root: nn.Module, dotted_name: str) -> tuple[nn.Module, str]:
     parts = dotted_name.split(".")

@@ -1,8 +1,8 @@
-"""Algorithm 1: NLPN privilege-aligned fine-tuning.
+"""NLPN privilege-aligned fine-tuning.
 
-Teaches the model that at low privilege, restricted capabilities are
-genuinely unreachable — not output-filtered. At full privilege, normal
-behaviour is preserved.
+Conditions the model to refuse restricted topics at low privilege through
+behavioral fine-tuning on top of rank-reduced weight approximation.
+At full privilege, normal behaviour is preserved.
 
 What is trained:
   Only the B matrices (output projections) of every NLPNLinear layer.
