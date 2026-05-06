@@ -1,10 +1,11 @@
-# comp. — Nested Least-Privilege Networks
+# comp. — Privilege-Conditioned LLM Deployment
 
-Policy-enforced LLM deployment via rank-restricted transformer layers. Instead of filtering outputs, comp. constrains what the model can *compute* at low privilege — capabilities become structurally unreachable rather than merely blocked.
+Policy-enforced LLM deployment via rank-reduced weight approximation and behavioral fine-tuning. At low privilege, every weight matrix is replaced with a rank-g approximation and the model is conditioned to refuse denied topics. At full privilege, normal behaviour is preserved.
 
 ```
 Policy text  →  Translate  →  Monitor  →  Allocate  →  Enforce
-                (NLP/LLM)   (check prompt)  (set g)   (rank-restrict)
+                (NLP/LLM)   (check prompt   (set g)   (rank-restrict)
+                             + user role)
 ```
 
 ---
@@ -17,9 +18,11 @@ Each `nn.Linear` layer in the model is replaced with an **NLPNLinear** layer:
 W(g) = B[:, :g] @ A[:g, :]          g ∈ [1, rmax]
 ```
 
-At privilege `g`, only the first `g` rank-1 components of the weight matrix are active. The nested structure guarantees `Im(W(g)) ⊆ Im(W(g+1))` — lower privilege is a strict subset of higher privilege, so capability reduction is structural, not a filter.
+At privilege `g`, only the top-g singular components of the weight matrix are active. This is a low-rank approximation — not a structural capability barrier. **Training** then fine-tunes only the `B` matrices so the model is *conditioned* to refuse denied topics at low privilege, while preserving normal behaviour at full privilege.
 
-**Training** fine-tunes only the `B` matrices so that at `low_g` the model genuinely refuses denied topics, while at `rmax` normal behaviour is preserved. After training, `calibrate_privilege` binary-searches for the highest `g` that still achieves a target suppression rate — maximising capability while maintaining the enforcement guarantee.
+After training, `calibrate_privilege` binary-searches for the highest `g` that still achieves a target suppression rate. The resulting `low_g` is saved to the checkpoint and used automatically at inference.
+
+The adversarial evaluation harness (`evaluate_adversarial`) measures suppression across attack types — synonym substitution, indirect framing, roleplay injection, soft extraction — that were never seen during training. This is what you show an auditor: concrete out-of-distribution suppression rates, not a theoretical claim.
 
 ---
 

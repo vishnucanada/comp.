@@ -11,10 +11,12 @@ class NLPNLinear(nn.Module):
       A ∈ R^(rmax×din),  B ∈ R^(dout×rmax).
 
     At privilege g, the effective weight is:
-      W(g) = B[:, :g] @ A[:g, :]   (rank ≤ g prefix)
+      W(g) = B[:, :g] @ A[:g, :]   (rank-g prefix approximation)
 
-    This gives a monotone nested family:
-      Im(W(g)) ⊆ Im(W(g+1)) ⊆ ... ⊆ Im(W(rmax))
+    Because the prefix is nested, W(g) is a strict low-rank approximation of
+    W(g+1): reducing g degrades approximation quality rather than making
+    specific capabilities unreachable.  Behavioral fine-tuning (train_nlpn)
+    then conditions the model to refuse denied topics at low privilege.
 
     W(g) is cached during eval: the matrix product is recomputed only when
     privilege changes, the model enters training mode, or the layer moves device.

@@ -20,12 +20,12 @@ from src.policy import Policy, PolicyAllocator, PolicyCompiler
 from src.train import (
     _DEFAULT_ALLOW,
     TrainConfig,
-    build_adversarial_examples,
     build_adversarial_examples_by_type,
     build_deny_examples,
     calibrate_privilege,
     evaluate_adversarial,
     evaluate_nlpn,
+    generate_deny_examples,
 )
 from src.translator import PolicyTranslator
 
@@ -272,6 +272,26 @@ def test_allocator_allow_sets_full_privilege(model, tokenizer, policy):
     assert g == 8
 
 
+def test_allocator_role_overrides_content(model, tokenizer, policy):
+    """A verified role bypasses content-based allocation."""
+    allocator = PolicyAllocator(
+        PolicyCompiler(policy),
+        tokenizer,
+        low_privilege=1,
+        role_privileges={"hr_admin": 8, "anonymous": 1},
+    )
+    enc = tokenizer("What is the salary?", return_tensors="pt")
+    # Same denied prompt, but hr_admin role → full privilege
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="hr_admin")
+    assert g == 8
+    # anonymous role → low privilege regardless of content
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="anonymous")
+    assert g == 1
+    # unknown role → falls through to content-based → low (salary is denied)
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="intern")
+    assert g == 1
+
+
 # ── 4. Natural language policy translation ───────────────────────────────────
 
 
@@ -460,8 +480,15 @@ def test_default_deny_blocks_injection_without_keyword(policy):
     assert allocator.allocate(SimpleNamespace(), enc["input_ids"], rmax=8) == 1
 
 
-def test_adversarial_examples_generated(policy):
-    examples = build_adversarial_examples(policy)
-    prompts = [p for p, _ in examples]
-    assert any("pretend" in p.lower() for p in prompts)
-    assert any("hypothetically" in p.lower() for p in prompts)
+def test_generate_deny_examples_falls_back_without_key(policy):
+    """Without ANTHROPIC_API_KEY, generate_deny_examples returns template examples."""
+    import os
+
+    key_bak = os.environ.pop("ANTHROPIC_API_KEY", None)
+    try:
+        examples = generate_deny_examples(policy)
+        assert len(examples) > 0
+        assert all(isinstance(p, str) and isinstance(r, str) for p, r in examples)
+    finally:
+        if key_bak is not None:
+            os.environ["ANTHROPIC_API_KEY"] = key_bak
