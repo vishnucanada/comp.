@@ -79,7 +79,6 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     deny_ex = build_deny_examples(policy)
     metrics = evaluate_nlpn(model, tokenizer, deny_ex, _DEFAULT_ALLOW, rmax=rmax, policy=policy)
-
     print("In-distribution metrics:")
     for k, v in metrics.items():
         print(f"  {k}: {v}")

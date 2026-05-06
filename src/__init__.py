@@ -1,18 +1,17 @@
 """
-comp — Nested Least-Privilege Networks for transformer deployment.
+comp — privilege-conditioned LLM deployment via rank-reduced weight approximation.
 
 MAE stack
 ---------
 Translate  →  PolicyTranslator          (natural language → Policy)
 Monitor    →  PolicyCompiler            (Policy → request-time signals)
-Allocator  →  PolicyAllocator           (signals → privilege g)
+Allocator  →  PolicyAllocator           (signals + user_role → privilege g)
            →  GDPRAllocator             (tiered by GDPR article severity + audit log)
 Enforcer   →  wrap_with_nlpn            (g → rank-restricted forward pass)
 """
 
 from .enforcer import (
     DEFAULT_MODEL_ID,
-    benchmark_overhead,
     detect_rmax,
     get_device,
     get_rmax,
@@ -27,10 +26,12 @@ from .nlpn import NLPNLinear
 from .policy import Policy, PolicyAllocator, PolicyCompiler
 from .train import (
     TrainConfig,
-    build_adversarial_examples,
+    build_adversarial_examples_by_type,
     build_deny_examples,
     calibrate_privilege,
+    evaluate_adversarial,
     evaluate_nlpn,
+    generate_deny_examples,
     train_nlpn,
 )
 from .translator import PolicyTranslator
@@ -46,7 +47,6 @@ __all__ = [
     "get_device",
     "load_model",
     "DEFAULT_MODEL_ID",
-    "benchmark_overhead",
     "Policy",
     "PolicyCompiler",
     "PolicyAllocator",
@@ -57,8 +57,10 @@ __all__ = [
     "verify_audit_log",
     "train_nlpn",
     "build_deny_examples",
-    "build_adversarial_examples",
+    "build_adversarial_examples_by_type",
+    "generate_deny_examples",
     "TrainConfig",
     "evaluate_nlpn",
+    "evaluate_adversarial",
     "calibrate_privilege",
 ]

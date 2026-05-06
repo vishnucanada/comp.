@@ -1,4 +1,4 @@
-"""Nested Least-Privilege Linear layer (Section 4 of the paper)."""
+"""Privilege-conditioned linear layer via rank-reduced weight approximation."""
 
 import torch
 import torch.nn as nn
