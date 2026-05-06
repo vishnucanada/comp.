@@ -102,15 +102,20 @@ _DEFAULT_TARGET_MODULES = [
 
 def wrap_with_nlpn(
     model: nn.Module,
-    rmax: int,
+    rmax: int | None = None,
     target_modules: list[str] | None = None,
 ) -> nn.Module:
     """
     Replace matching nn.Linear layers with NLPNLinear layers (the enforcer Tg).
 
+    Each layer's rmax is min(out_features, in_features) — capped by the optional
+    `rmax` argument if supplied.  This ensures W(rmax) == W_original for every layer
+    independently, regardless of dimension differences across the network.
+
     Args:
         model: Pretrained transformer.
-        rmax: Maximum rank (= full privilege ceiling).
+        rmax: Optional upper bound on any layer's rmax.  If None, each layer
+              uses its own min(out, in).
         target_modules: Module name substrings to replace.
             Defaults to MLP + attention projections for common architectures.
 
@@ -125,8 +130,11 @@ def wrap_with_nlpn(
             continue
         if not any(t in name for t in targets):
             continue
+        layer_rmax = min(module.out_features, module.in_features)
+        if rmax is not None:
+            layer_rmax = min(layer_rmax, rmax)
         parent, attr = _resolve_parent(model, name)
-        setattr(parent, attr, NLPNLinear.from_linear(module, rmax))
+        setattr(parent, attr, NLPNLinear.from_linear(module, layer_rmax))
         replaced += 1
 
     if replaced == 0:
@@ -135,12 +143,16 @@ def wrap_with_nlpn(
             f"Searched for: {targets}. "
             f"Pass target_modules= with the correct layer names for your architecture."
         )
-    print(f"Wrapped {replaced} linear layers with NLPNLinear (rmax={rmax})")
+    print(f"Wrapped {replaced} linear layers with NLPNLinear (per-layer rmax)")
     return model
 
 
 def set_privilege(model: nn.Module, g: int | dict[str, int]) -> None:
     """Set privilege level on NLPNLinear layers.
+
+    g is clamped to each layer's own rmax so that a single global value can be
+    applied across layers that have different dimensions (and therefore different
+    rmax values).  Layers with rmax < g run at full privilege for their size.
 
     Args:
         g: A single int applied to all layers, **or** a dict mapping layer-name
@@ -149,13 +161,13 @@ def set_privilege(model: nn.Module, g: int | dict[str, int]) -> None:
 
     Examples::
 
-        set_privilege(model, 4)                          # all layers → 4
+        set_privilege(model, 4)                          # all layers → min(4, layer.rmax)
         set_privilege(model, {"q_proj": 2, "down_proj": 6})  # per-component
     """
     if isinstance(g, int):
         for module in model.modules():
             if isinstance(module, NLPNLinear):
-                module.privilege = g
+                module.privilege = min(g, module.rmax)
         return
 
     for name, module in model.named_modules():
@@ -169,15 +181,19 @@ def set_privilege(model: nn.Module, g: int | dict[str, int]) -> None:
                     new_g = val
                     break
         if new_g is not None:
-            module.privilege = new_g
+            module.privilege = min(new_g, module.rmax)
 
 
 def get_rmax(model: nn.Module) -> int:
-    """Return rmax from the first NLPNLinear found."""
-    for module in model.modules():
-        if isinstance(module, NLPNLinear):
-            return module.rmax
-    raise ValueError("No NLPNLinear layers found in model.")
+    """Return the maximum rmax across all NLPNLinear layers.
+
+    This is the ceiling of the privilege scale — setting privilege to this value
+    puts every layer at full capability (each layer clamps to its own rmax).
+    """
+    rmaxes = [m.rmax for m in model.modules() if isinstance(m, NLPNLinear)]
+    if not rmaxes:
+        raise ValueError("No NLPNLinear layers found in model.")
+    return max(rmaxes)
 
 
 def detect_rmax(
@@ -185,17 +201,20 @@ def detect_rmax(
     target_modules: list[str] | None = None,
 ) -> int:
     """
-    Return the appropriate rmax for this model: min(dout, din) of the first
-    matching target layer. This ensures W(rmax) ≈ W_original (full SVD recovery).
+    Return the privilege scale ceiling for this model before wrapping.
 
-    rmax = min dimension because SVD of W ∈ R^(dout×din) has at most
-    min(dout, din) non-zero singular values.
+    This is the maximum of min(dout, din) across all matching target layers —
+    the same value get_rmax() will return after wrap_with_nlpn() is called.
+    Pass this to calibrate_privilege / train_nlpn as the rmax argument.
     """
     targets = target_modules if target_modules is not None else _DEFAULT_TARGET_MODULES
+    rmaxes = []
     for name, module in model.named_modules():
         if isinstance(module, nn.Linear) and any(t in name for t in targets):
-            return min(module.in_features, module.out_features)
-    raise RuntimeError(f"No target layers found. Searched for: {targets}")
+            rmaxes.append(min(module.in_features, module.out_features))
+    if not rmaxes:
+        raise RuntimeError(f"No target layers found. Searched for: {targets}")
+    return max(rmaxes)
 
 
 def save_nlpn(

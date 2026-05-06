@@ -21,8 +21,10 @@ from src.train import (
     _DEFAULT_ALLOW,
     TrainConfig,
     build_adversarial_examples,
+    build_adversarial_examples_by_type,
     build_deny_examples,
     calibrate_privilege,
+    evaluate_adversarial,
     evaluate_nlpn,
 )
 from src.translator import PolicyTranslator
@@ -198,6 +200,29 @@ def test_wrap_raises_on_no_match():
         wrap_with_nlpn(_TinyLM(), rmax=8, target_modules=["nonexistent_layer"])
 
 
+def test_wrap_per_layer_rmax():
+    """Each NLPNLinear gets rmax = min(out, in) of its own layer, not a global value."""
+    from src.nlpn import NLPNLinear
+
+    m = _TinyLM()
+    wrap_with_nlpn(m, target_modules=["down_proj", "up_proj", "q_proj"])
+    for name, module in m.named_modules():
+        if isinstance(module, NLPNLinear):
+            assert module.rmax == min(module.out_features, module.in_features)
+
+
+def test_set_privilege_clamps_to_layer_rmax():
+    """set_privilege(model, g) with g > layer.rmax should clamp, not raise."""
+    from src.nlpn import NLPNLinear
+
+    m = _TinyLM()
+    wrap_with_nlpn(m, rmax=8, target_modules=["down_proj", "up_proj", "q_proj"])
+    set_privilege(m, 9999)  # far above rmax=8 — must not raise
+    for module in m.modules():
+        if isinstance(module, NLPNLinear):
+            assert module.privilege == 8  # clamped to layer's rmax
+
+
 def test_wrap_preserves_output_at_rmax():
     """W(rmax) must reconstruct the original weight matrix exactly."""
     base = _TinyLM()
@@ -250,13 +275,29 @@ def test_allocator_allow_sets_full_privilege(model, tokenizer, policy):
 # ── 4. Natural language policy translation ───────────────────────────────────
 
 
-def test_translator_extracts_deny_and_allow():
-    policy = PolicyTranslator().translate(
+def test_translator_rule_based_extracts_deny_and_allow():
+    """Rule-based path correctly identifies deny/allow categories."""
+    policy = PolicyTranslator()._rule_translate(
         "Salary information must not be shared. Medical records are confidential. Job titles are allowed."
     )
     deny_kws = [kw for r in policy.denied for kw in r.keywords]
     assert any("salary" in kw for kw in deny_kws)
     assert any(r.action == "ALLOW" for r in policy.rules)
+
+
+def test_translator_falls_back_to_rule_based():
+    """Without API key or Ollama, translate() uses rule-based fallback."""
+    import os
+
+    key_bak = os.environ.pop("ANTHROPIC_API_KEY", None)
+    try:
+        policy = PolicyTranslator().translate(
+            "Salary information must not be shared. Medical records are confidential."
+        )
+        assert any(r.action == "DENY" for r in policy.rules)
+    finally:
+        if key_bak is not None:
+            os.environ["ANTHROPIC_API_KEY"] = key_bak
 
 
 # ── 5. Training ───────────────────────────────────────────────────────────────
@@ -364,6 +405,21 @@ def test_calibrate_returns_valid_g(model, tokenizer, policy):
     assert 1 <= low_g <= 8
     # model must be restored to full privilege after calibration
     assert all(m.privilege == 8 for m in model.modules() if isinstance(m, NLPNLinear))
+
+
+def test_evaluate_adversarial_keys(model, tokenizer, policy):
+    by_type = build_adversarial_examples_by_type(policy)
+    result = evaluate_adversarial(model, tokenizer, by_type, low_g=1, policy=policy)
+    assert set(result) >= {"synonym", "indirect", "roleplay", "soft_extraction", "overall"}
+    assert all(0.0 <= v <= 1.0 for v in result.values())
+
+
+def test_adversarial_examples_by_type_structure(policy):
+    by_type = build_adversarial_examples_by_type(policy)
+    assert set(by_type) == {"synonym", "indirect", "roleplay", "soft_extraction"}
+    # indirect and roleplay are always populated (no synonym map dependency)
+    assert len(by_type["indirect"]) > 0
+    assert len(by_type["roleplay"]) > 0
 
 
 def test_save_nlpn_persists_low_g(model, tmp_path):

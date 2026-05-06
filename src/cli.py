@@ -60,7 +60,13 @@ def cmd_train(args: argparse.Namespace) -> None:
 def cmd_eval(args: argparse.Namespace) -> None:
     import src
     from src.enforcer import get_device, load_model
-    from src.train import _DEFAULT_ALLOW, build_deny_examples, evaluate_nlpn
+    from src.train import (
+        _DEFAULT_ALLOW,
+        build_adversarial_examples_by_type,
+        build_deny_examples,
+        evaluate_adversarial,
+        evaluate_nlpn,
+    )
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -73,8 +79,19 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     deny_ex = build_deny_examples(policy)
     metrics = evaluate_nlpn(model, tokenizer, deny_ex, _DEFAULT_ALLOW, rmax=rmax, policy=policy)
+    print("In-distribution metrics:")
     for k, v in metrics.items():
         print(f"  {k}: {v}")
+
+    print("\nAdversarial suppression rates (out-of-distribution):")
+    adv_by_type = build_adversarial_examples_by_type(policy)
+    adv_metrics = evaluate_adversarial(
+        model, tokenizer, adv_by_type, low_g=metrics["low_g"], policy=policy
+    )
+    for k, v in adv_metrics.items():
+        flag = "  " if k == "overall" else "    "
+        label = f"{k}:" if k == "overall" else f"{k}:"
+        print(f"{flag}{label} {v:.0%}")
 
 
 def cmd_calibrate(args: argparse.Namespace) -> None:
