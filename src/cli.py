@@ -20,7 +20,7 @@ from pathlib import Path
 def cmd_train(args: argparse.Namespace) -> None:
     import src
     from src.enforcer import get_device, load_model
-    from src.train import TrainConfig, build_deny_examples, calibrate_privilege
+    from src.train import TrainConfig, generate_deny_examples, calibrate_privilege
 
     device = get_device()
     policy = src.Policy.from_file(args.policy)
@@ -36,7 +36,7 @@ def cmd_train(args: argparse.Namespace) -> None:
     rmax = src.detect_rmax(model)
     src.wrap_with_nlpn(model, rmax=rmax)
 
-    deny_ex = build_deny_examples(policy)
+    deny_ex = generate_deny_examples(policy)
     src.train_nlpn(
         model,
         tokenizer,
@@ -79,6 +79,7 @@ def cmd_eval(args: argparse.Namespace) -> None:
 
     deny_ex = build_deny_examples(policy)
     metrics = evaluate_nlpn(model, tokenizer, deny_ex, _DEFAULT_ALLOW, rmax=rmax, policy=policy)
+
     print("In-distribution metrics:")
     for k, v in metrics.items():
         print(f"  {k}: {v}")

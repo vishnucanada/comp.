@@ -79,11 +79,7 @@ async def chat_stream(request: Request, req: StreamChatRequest):
                 safe = sanitize(req.policy_name)
                 response, model_name = await loop.run_in_executor(
                     None,
-                    nlpn_generate,
-                    model,
-                    tokenizer,
-                    req.message,
-                    safe,
+                    lambda: nlpn_generate(model, tokenizer, req.message, safe, req.user_role),
                 )
                 for word in response.split():
                     yield f"data: {json.dumps({'type': 'chunk', 'text': word + ' '})}\n\n"
