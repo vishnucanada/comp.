@@ -221,10 +221,16 @@ class PolicyCompiler:
 class PolicyAllocator:
     """Allocator driven by a compiled policy: DENY → low_privilege, else rmax.
 
+    Privilege is resolved in this order:
+      1. If user_role maps to an entry in role_privileges, use that value.
+         (Lets verified roles like "hr_admin" bypass content-based restrictions.)
+      2. Otherwise apply content-based policy: DENY → low_privilege, ALLOW → rmax.
+
     Args:
+        role_privileges: Optional mapping of role name → privilege level.
+                         e.g. {"hr_admin": rmax, "manager": 50, "anonymous": 1}
         default_deny: When True, prompts matching injection patterns are denied
-                      even without a keyword match. Safer but may increase
-                      false-positive rate on legitimate prompts.
+                      even without a keyword match.
     """
 
     def __init__(
@@ -233,11 +239,13 @@ class PolicyAllocator:
         tokenizer,
         low_privilege: int = 1,
         default_deny: bool = False,
+        role_privileges: dict[str, int] | None = None,
     ):
         self.compiler = compiler
         self.tokenizer = tokenizer
         self.low_privilege = low_privilege
         self.default_deny = default_deny
+        self.role_privileges = role_privileges or {}
 
     def allocate(
         self,
@@ -245,8 +253,15 @@ class PolicyAllocator:
         input_ids: torch.Tensor,
         rmax: int,
         history: list[str] | None = None,
+        user_role: str | None = None,
         **_,
     ) -> int:
+        # Role-based override: a verified identity gets a fixed privilege level.
+        if user_role and user_role in self.role_privileges:
+            g = min(self.role_privileges[user_role], rmax)
+            print(f"  [policy] role={user_role!r} → privilege {g}")
+            return g
+
         text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         violated, categories = self.compiler.check(text, history)
 
@@ -263,13 +278,20 @@ class PolicyAllocator:
         return self.low_privilege if violated else rmax
 
     def generate(
-        self, model, input_ids, attention_mask=None, rmax=None, history=None, **generate_kwargs
+        self,
+        model,
+        input_ids,
+        attention_mask=None,
+        rmax=None,
+        history=None,
+        user_role: str | None = None,
+        **generate_kwargs,
     ):
         from .enforcer import get_rmax, set_privilege
 
         if rmax is None:
             rmax = get_rmax(model)
-        g = self.allocate(model, input_ids, rmax, history=history)
+        g = self.allocate(model, input_ids, rmax, history=history, user_role=user_role)
         set_privilege(model, g)
         with torch.no_grad():
             output = model.generate(

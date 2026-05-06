@@ -41,13 +41,10 @@ async def chat(request: Request, req: ChatRequest):
         model, tokenizer = model_registry.get(sanitize(req.policy_name))
         if model is not None:
             loop = asyncio.get_event_loop()
+            safe = sanitize(req.policy_name)
             response, model_name = await loop.run_in_executor(
                 None,
-                nlpn_generate,
-                model,
-                tokenizer,
-                req.message,
-                sanitize(req.policy_name),
+                lambda: nlpn_generate(model, tokenizer, req.message, safe, req.user_role),
             )
             return {
                 "decision": "ALLOW",

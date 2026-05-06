@@ -82,8 +82,18 @@ def get_response(message: str, history: list[dict]) -> tuple[str, str]:
     )
 
 
-def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str, str]:
-    """Generate with rank-restricted NLPN model, applying policy-derived privilege."""
+def nlpn_generate(
+    model,
+    tokenizer,
+    message: str,
+    policy_name: str,
+    user_role: str | None = None,
+) -> tuple[str, str]:
+    """Generate with rank-restricted NLPN model, applying policy-derived privilege.
+
+    user_role, when provided, is matched against the policy's role_privileges map
+    before falling back to content-based allocation.
+    """
     from src.enforcer import get_rmax, set_privilege
     from src.policy import PolicyAllocator, PolicyCompiler
 
@@ -102,7 +112,7 @@ def nlpn_generate(model, tokenizer, message: str, policy_name: str) -> tuple[str
 
     if policy:
         allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=low_g)
-        g = allocator.allocate(model, enc["input_ids"], rmax=rmax)
+        g = allocator.allocate(model, enc["input_ids"], rmax=rmax, user_role=user_role)
     else:
         g = rmax
 

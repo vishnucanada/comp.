@@ -31,12 +31,14 @@ class ChatRequest(BaseModel):
     message: str = Field(..., max_length=4096)
     policy_name: str | None = Field(None, max_length=64)
     history: list[ChatMessage] = []
+    user_role: str | None = Field(None, max_length=64)
 
 
 class StreamChatRequest(BaseModel):
     message: str = Field(..., max_length=4096)
     policy_name: str | None = Field(None, max_length=64)
     history: list[ChatMessage] = []
+    user_role: str | None = Field(None, max_length=64)
 
 
 class TrainRequest(BaseModel):
