@@ -80,9 +80,11 @@ class PolicyGate:
     ) -> GateDecision:
         """Return a GateDecision for the given message and role."""
         # Full-privilege roles bypass content checks entirely.
+        # Use find_role() — not get_role() — so unknown role names cannot silently
+        # inherit the default role's privilege and bypass enforcement.
         if self.iam and user_role:
-            role = self.iam.get_role(user_role)
-            if role.privilege == "full":
+            role = self.iam.find_role(user_role)
+            if role is not None and role.privilege == "full":
                 decision = GateDecision(allowed=True, categories=[], user_role=user_role)
                 self._record(message, decision)
                 return decision
@@ -132,7 +134,8 @@ class PolicyGate:
         Returns (result, decision). result is None if the call was denied.
         """
         if self.iam and user_role:
-            if not self.iam.can_use_tool(user_role, tool_name):
+            role = self.iam.find_role(user_role)
+            if role is not None and not role.can_use_tool(tool_name):
                 decision = GateDecision(
                     allowed=False,
                     categories=[f"[tool-not-allowed:{tool_name}]"],
