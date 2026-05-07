@@ -7,6 +7,7 @@ Covers: parse → wrap → compile → allocate → train → save/load → GDPR
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -492,3 +493,283 @@ def test_generate_deny_examples_falls_back_without_key(policy):
     finally:
         if key_bak is not None:
             os.environ["ANTHROPIC_API_KEY"] = key_bak
+
+
+# ── 10. IAM configuration ─────────────────────────────────────────────────────
+
+
+def test_iam_config_from_dict():
+    from src.iam import IAMConfig
+
+    config = IAMConfig.from_dict({
+        "default_role": "anonymous",
+        "roles": {
+            "anonymous": {"privilege": "low"},
+            "employee": {"privilege": "medium", "tools": ["search_docs"]},
+            "admin": {"privilege": "full", "tools": "*"},
+        },
+    })
+    assert set(config.roles) == {"anonymous", "employee", "admin"}
+    assert config.default_role == "anonymous"
+
+
+def test_iam_role_resolve_privilege():
+    from src.iam import IAMConfig
+
+    config = IAMConfig.from_dict({
+        "roles": {
+            "low_user": {"privilege": "low"},
+            "mid_user": {"privilege": "medium"},
+            "full_user": {"privilege": "full"},
+            "pct_user": {"privilege": "25%"},
+        }
+    })
+    assert config.resolve_privilege("low_user", rmax=100, low_g=5) == 5
+    assert config.resolve_privilege("mid_user", rmax=100) == 50
+    assert config.resolve_privilege("full_user", rmax=100) == 100
+    assert config.resolve_privilege("pct_user", rmax=100) == 25
+
+
+def test_iam_can_use_tool():
+    from src.iam import IAMConfig
+
+    config = IAMConfig.from_dict({
+        "roles": {
+            "analyst": {"privilege": "medium", "tools": ["search_docs", "get_faq"]},
+            "admin": {"privilege": "full", "tools": "*"},
+            "anon": {"privilege": "low", "tools": []},
+        }
+    })
+    assert config.can_use_tool("analyst", "search_docs")
+    assert not config.can_use_tool("analyst", "delete_record")
+    assert config.can_use_tool("admin", "any_tool")
+    assert not config.can_use_tool("anon", "search_docs")
+
+
+def test_iam_allocator_integration(model, tokenizer, policy):
+    """PolicyAllocator with IAMConfig uses IAM privilege for known roles."""
+    from src.iam import IAMConfig
+
+    iam = IAMConfig.from_dict({
+        "default_role": "anonymous",
+        "roles": {
+            "anonymous": {"privilege": "low"},
+            "hr_manager": {"privilege": "full"},
+        },
+    })
+    allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=1, iam=iam)
+    enc = tokenizer("What is the salary?", return_tensors="pt")
+
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="hr_manager")
+    assert g == 8  # full → rmax
+
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="anonymous")
+    assert g == 1  # low → low_privilege=1
+
+    g = allocator.allocate(model, enc["input_ids"], rmax=8, user_role="unknown")
+    assert g == 1  # not in IAM → content check → salary denied → low_privilege
+
+
+# ── 11. PolicyGate ────────────────────────────────────────────────────────────
+
+
+def test_gate_allows_clean_prompt(policy):
+    from src.gate import PolicyGate
+
+    gate = PolicyGate(policy)
+    decision = gate.check("What are the office hours?")
+    assert decision.allowed
+    assert decision.categories == []
+
+
+def test_gate_denies_denied_prompt(policy):
+    from src.gate import PolicyGate
+
+    gate = PolicyGate(policy)
+    decision = gate.check("What is John's salary?")
+    assert decision.denied
+    assert "salary information" in decision.categories
+
+
+def test_gate_complete_returns_deny_message_on_deny(policy):
+    from src.gate import PolicyGate
+
+    gate = PolicyGate(policy)
+    response, decision = gate.complete(
+        "What is John's salary?",
+        fn=lambda m: "His salary is $100k",
+    )
+    assert decision.denied
+    assert response == gate.deny_message
+
+
+def test_gate_complete_calls_fn_on_allow(policy):
+    from src.gate import PolicyGate
+
+    gate = PolicyGate(policy)
+    response, decision = gate.complete(
+        "What are the office hours?",
+        fn=lambda m: "9am to 5pm",
+    )
+    assert decision.allowed
+    assert response == "9am to 5pm"
+
+
+def test_gate_full_privilege_bypasses_content_check(policy):
+    from src.gate import PolicyGate
+    from src.iam import IAMConfig
+
+    iam = IAMConfig.from_dict({
+        "roles": {
+            "hr_manager": {"privilege": "full"},
+            "anonymous": {"privilege": "low"},
+        }
+    })
+    gate = PolicyGate(policy, iam=iam)
+
+    assert gate.check("What is John's salary?", user_role="hr_manager").allowed
+    assert gate.check("What is John's salary?", user_role="anonymous").denied
+
+
+def test_gate_tool_not_in_allowlist_is_denied(policy):
+    from src.gate import PolicyGate
+    from src.iam import IAMConfig
+
+    iam = IAMConfig.from_dict({
+        "roles": {"analyst": {"privilege": "medium", "tools": ["search_docs"]}}
+    })
+    gate = PolicyGate(policy, iam=iam)
+    result, decision = gate.run_tool(
+        "delete_record",
+        fn=lambda **kw: "deleted",
+        args={},
+        user_role="analyst",
+    )
+    assert result is None
+    assert decision.denied
+    assert "tool-not-allowed:delete_record" in decision.categories[0]
+
+
+def test_gate_tool_in_allowlist_calls_fn(policy):
+    from src.gate import PolicyGate
+    from src.iam import IAMConfig
+
+    iam = IAMConfig.from_dict({
+        "roles": {"analyst": {"privilege": "medium", "tools": ["search_docs"]}}
+    })
+    gate = PolicyGate(policy, iam=iam)
+    result, decision = gate.run_tool(
+        "search_docs",
+        fn=lambda query: "results",
+        args={"query": "office hours"},
+        user_role="analyst",
+    )
+    assert decision.allowed
+    assert result == "results"
+
+
+def test_gate_filter_context_removes_denied_docs(policy):
+    from src.gate import PolicyGate
+
+    gate = PolicyGate(policy)
+    docs = [
+        "Office hours are 9am to 5pm.",
+        "John's salary is $80,000 per year.",
+        "We are located in downtown.",
+        "The CEO's email is ceo@example.com.",
+    ]
+    filtered = gate.filter_context(docs)
+    assert len(filtered) == 2
+    assert all("salary" not in d and "email" not in d for d in filtered)
+
+
+def test_gate_audit_log_written(policy, tmp_path):
+    from src.gate import PolicyGate
+
+    log_path = tmp_path / "gate_audit.jsonl"
+    gate = PolicyGate(policy, audit_log_path=log_path)
+    gate.check("What is the salary?")
+    gate.check("What are the office hours?")
+
+    assert log_path.exists()
+    rows = [json.loads(line) for line in log_path.read_text().splitlines()]
+    assert len(rows) == 2
+    assert rows[0]["allowed"] is False
+    assert rows[1]["allowed"] is True
+
+
+# ── 12. ComplianceReport ─────────────────────────────────────────────────────
+
+
+def test_compliance_report_to_dict(policy):
+    from src.report import ComplianceReport
+
+    report = ComplianceReport(
+        policy_name=policy.name,
+        generated_at="2026-05-04T12:00:00",
+        policy_rules=[{"action": "DENY", "category": "salary information", "keywords": ["salary"]}],
+        suppression_rates={"synonym": 0.95, "overall": 0.92},
+        audit_stats={"total_requests": 10, "denied_requests": 3},
+        tamper_verification={"total": 10, "valid": 10, "tampered": 0, "unsigned": 0},
+    )
+    d = report.to_dict()
+    assert d["policy_name"] == "HR Compliance"
+    assert d["suppression_rates"]["overall"] == 0.92
+
+
+def test_compliance_report_markdown_contains_sections(policy):
+    from src.report import ComplianceReport
+
+    report = ComplianceReport(
+        policy_name=policy.name,
+        generated_at="2026-05-04T12:00:00",
+        policy_rules=[
+            {"action": "DENY", "category": "salary information", "keywords": ["salary"], "severity": "none"}
+        ],
+        suppression_rates={"synonym": 0.95, "overall": 0.92},
+        audit_stats={},
+        tamper_verification={},
+    )
+    md = report.to_markdown()
+    assert "# Compliance Report" in md
+    assert "Adversarial Suppression Rates" in md
+    assert "PASS" in md  # 0.95 and 0.92 both ≥ 0.9
+
+
+def test_compliance_report_to_json(policy):
+    from src.report import ComplianceReport
+
+    report = ComplianceReport(
+        policy_name=policy.name,
+        generated_at="2026-05-04T12:00:00",
+        policy_rules=[],
+        suppression_rates={"overall": 0.87},
+        audit_stats={},
+        tamper_verification={},
+    )
+    data = json.loads(report.to_json())
+    assert data["suppression_rates"]["overall"] == 0.87
+
+
+def test_generate_report_no_checkpoint(policy):
+    from src.report import generate_report
+
+    report = generate_report(policy)
+    assert report.policy_name == "HR Compliance"
+    assert report.suppression_rates == {}
+    assert report.audit_stats == {}
+    assert isinstance(report.generated_at, str)
+
+
+def test_generate_report_with_audit_log(policy, tmp_path):
+    from src.gate import PolicyGate
+    from src.report import generate_report
+
+    log_path = tmp_path / "audit.jsonl"
+    gate = PolicyGate(policy, audit_log_path=log_path)
+    gate.check("What is the salary?")
+    gate.check("What are office hours?")
+
+    report = generate_report(policy, audit_log_path=log_path)
+    assert report.audit_stats["total_requests"] == 2
+    assert report.audit_stats["denied_requests"] == 1

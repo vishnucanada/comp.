@@ -21,9 +21,12 @@ from .enforcer import (
     set_privilege,
     wrap_with_nlpn,
 )
+from .gate import GateDecision, PolicyGate
 from .gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
+from .iam import IAMConfig, Role
 from .nlpn import NLPNLinear
 from .policy import Policy, PolicyAllocator, PolicyCompiler
+from .report import ComplianceReport, generate_report
 from .train import (
     TrainConfig,
     build_adversarial_examples_by_type,
@@ -38,6 +41,12 @@ from .translator import PolicyTranslator
 
 __all__ = [
     "NLPNLinear",
+    "IAMConfig",
+    "Role",
+    "PolicyGate",
+    "GateDecision",
+    "ComplianceReport",
+    "generate_report",
     "wrap_with_nlpn",
     "set_privilege",
     "get_rmax",

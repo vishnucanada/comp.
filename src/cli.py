@@ -114,6 +114,30 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
     print(f"\nOptimal low_g = {low_g}  (rmax={rmax}, target={args.target:.0%})")
 
 
+def cmd_report(args: argparse.Namespace) -> None:
+    from src.policy import Policy
+    from src.report import generate_report
+
+    policy = Policy.from_file(args.policy)
+    hmac_key = args.hmac_key.encode() if args.hmac_key else None
+
+    report = generate_report(
+        policy,
+        checkpoint_path=args.checkpoint,
+        audit_log_path=args.audit_log,
+        hmac_key=hmac_key,
+        model_id=args.model,
+    )
+
+    output = report.to_json() if args.format == "json" else report.to_markdown()
+
+    if args.output:
+        Path(args.output).write_text(output)
+        print(f"Report saved → {args.output}")
+    else:
+        print(output)
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     try:
         import uvicorn
@@ -151,6 +175,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cal.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
     p_cal.add_argument("--target", type=float, default=0.9)
     p_cal.set_defaults(func=cmd_calibrate)
+
+    p_report = sub.add_parser("report", help="Generate compliance report")
+    p_report.add_argument("policy")
+    p_report.add_argument("--checkpoint", default=None, help="NLPN checkpoint dir for adversarial eval")
+    p_report.add_argument("--audit-log", default=None, dest="audit_log", help="JSONL audit log path")
+    p_report.add_argument("--hmac-key", default=None, dest="hmac_key", help="HMAC key for tamper verification")
+    p_report.add_argument("--model", default="Qwen/Qwen2.5-0.5B")
+    p_report.add_argument("--output", default=None, help="Write report to file instead of stdout")
+    p_report.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    p_report.set_defaults(func=cmd_report)
 
     p_serve = sub.add_parser("serve", help="Start the web dashboard")
     p_serve.add_argument("--host", default="0.0.0.0")

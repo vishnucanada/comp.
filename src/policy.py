@@ -222,12 +222,14 @@ class PolicyAllocator:
     """Allocator driven by a compiled policy: DENY → low_privilege, else rmax.
 
     Privilege is resolved in this order:
-      1. If user_role maps to an entry in role_privileges, use that value.
-         (Lets verified roles like "hr_admin" bypass content-based restrictions.)
-      2. Otherwise apply content-based policy: DENY → low_privilege, ALLOW → rmax.
+      1. If user_role is in the IAMConfig roles, compute privilege via IAMConfig.
+      2. Else if user_role is in role_privileges dict, use that value directly.
+      3. Otherwise apply content-based policy: DENY → low_privilege, ALLOW → rmax.
 
     Args:
-        role_privileges: Optional mapping of role name → privilege level.
+        iam: IAMConfig for role-based privilege resolution. Supersedes role_privileges
+             when provided.
+        role_privileges: Legacy mapping of role name → absolute privilege level.
                          e.g. {"hr_admin": rmax, "manager": 50, "anonymous": 1}
         default_deny: When True, prompts matching injection patterns are denied
                       even without a keyword match.
@@ -240,12 +242,14 @@ class PolicyAllocator:
         low_privilege: int = 1,
         default_deny: bool = False,
         role_privileges: dict[str, int] | None = None,
+        iam=None,  # IAMConfig — optional, avoids circular import at type level
     ):
         self.compiler = compiler
         self.tokenizer = tokenizer
         self.low_privilege = low_privilege
         self.default_deny = default_deny
         self.role_privileges = role_privileges or {}
+        self.iam = iam
 
     def allocate(
         self,
@@ -256,7 +260,13 @@ class PolicyAllocator:
         user_role: str | None = None,
         **_,
     ) -> int:
-        # Role-based override: a verified identity gets a fixed privilege level.
+        # IAMConfig-based override: computed privilege for known roles.
+        if self.iam and user_role and user_role in self.iam.roles:
+            g = self.iam.resolve_privilege(user_role, rmax, self.low_privilege)
+            print(f"  [policy] iam role={user_role!r} → privilege {g}")
+            return g
+
+        # Legacy role_privileges dict override.
         if user_role and user_role in self.role_privileges:
             g = min(self.role_privileges[user_role], rmax)
             print(f"  [policy] role={user_role!r} → privilege {g}")
