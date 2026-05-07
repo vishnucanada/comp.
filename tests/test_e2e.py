@@ -668,6 +668,28 @@ def test_gate_tool_in_allowlist_calls_fn(policy):
     assert result == "results"
 
 
+def test_gate_unknown_role_cannot_escalate_privilege(policy):
+    """Unknown role names must not silently inherit default_role's privilege."""
+    from src.gate import PolicyGate
+    from src.iam import IAMConfig
+
+    # default_role has full privilege — a silent fallback would grant bypass to anyone
+    iam = IAMConfig.from_dict({
+        "default_role": "admin",
+        "roles": {
+            "admin": {"privilege": "full"},
+            "anonymous": {"privilege": "low"},
+        },
+    })
+    gate = PolicyGate(policy, iam=iam)
+
+    # Known full-privilege role correctly bypasses content checks
+    assert gate.check("What is John's salary?", user_role="admin").allowed
+    # Unknown role must NOT inherit "full" from default_role — must hit content check
+    assert gate.check("What is John's salary?", user_role="superuser").denied
+    assert gate.check("What is John's salary?", user_role="notarole").denied
+
+
 def test_gate_filter_context_removes_denied_docs(policy):
     from src.gate import PolicyGate
 
