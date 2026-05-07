@@ -116,6 +116,17 @@ class IAMConfig:
 
     # ── resolution ────────────────────────────────────────────────────────────
 
+    def find_role(self, role_name: str | None) -> Role | None:
+        """Return the role if explicitly defined, or None for unknown roles.
+
+        Unlike get_role(), does NOT fall back to default_role — callers must
+        handle None explicitly. Use this at security boundaries where silently
+        granting default privileges to an unrecognised identity is unsafe.
+        """
+        if role_name and role_name in self.roles:
+            return self.roles[role_name]
+        return None
+
     def get_role(self, role_name: str | None) -> Role:
         """Return the role, falling back to default_role if not found."""
         if role_name and role_name in self.roles:
@@ -126,7 +137,10 @@ class IAMConfig:
         return self.get_role(role_name).resolve_privilege(rmax, low_g)
 
     def can_use_tool(self, role_name: str | None, tool_name: str) -> bool:
-        return self.get_role(role_name).can_use_tool(tool_name)
+        role = self.find_role(role_name)
+        if role is None:
+            return False
+        return role.can_use_tool(tool_name)
 
     # ── serialisation ─────────────────────────────────────────────────────────
 
