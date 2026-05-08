@@ -1,21 +1,23 @@
-"""
-Policy-to-privilege compiler.
+"""Policy parsing and keyword/regex matching.
 
-Maps a natural-language policy text file to runtime monitors and privilege allocation.
-
-Pipeline:
-  policy.txt → PolicyParser → Policy → PolicyCompiler → PolicyAllocator → g
+A Policy is parsed from a small text DSL of DENY / ALLOW rules.  The companion
+PolicyCompiler runs the rules against a prompt (with optional multi-turn history)
+and returns the categories that fired.
 
 Policy file format
 ------------------
-# Comment
-name: Policy Name
+    # Comment
+    name: Policy Name
 
-DENY: category label
-  match: keyword1, keyword2, ...   (case-insensitive substring match)
-  regex: pattern                   (compiled as re.search on raw prompt)
+    DENY: category label
+      match: keyword1, keyword2, ...   (case-insensitive substring match)
+      regex: pattern                   (compiled as re.search on raw prompt)
 
-ALLOW: category label
+    ALLOW: category label
+
+For higher-quality detection (paraphrase, multilingual, jailbreak attempts),
+plug the policy into a Guard backend (see src/guard.py) — the keyword
+compiler is intentionally cheap and brittle, intended as a fallback.
 """
 
 from __future__ import annotations
@@ -25,8 +27,6 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
-
-import torch
 
 # Maps canonical keywords → common paraphrases.
 # Catches synonym-substitution bypass attempts without requiring external NLP.
@@ -76,8 +76,6 @@ class PolicyRule:
     category: str
     keywords: list[str] = field(default_factory=list)
     patterns: list[re.Pattern] = field(default_factory=list)
-    severity: str = "none"  # GDPR tier: critical | high | medium | none
-    article: int | None = None  # GDPR article number
 
     def matches(self, text: str) -> bool:
         text_lower = text.lower()
@@ -169,17 +167,8 @@ def _parse(text: str) -> Policy:
 
         elif current and line.lower().startswith("regex:"):
             pattern_str = line.split(":", 1)[1].strip()
-            try:
+            with contextlib.suppress(re.error):
                 current.patterns.append(re.compile(pattern_str))
-            except re.error as e:
-                print(f"Warning: skipping invalid regex {pattern_str!r}: {e}")
-
-        elif current and line.lower().startswith("severity:"):
-            current.severity = line.split(":", 1)[1].strip().lower()
-
-        elif current and line.lower().startswith("article:"):
-            with contextlib.suppress(ValueError):
-                current.article = int(line.split(":", 1)[1].strip())
 
     if current:
         rules.append(current)
@@ -188,14 +177,16 @@ def _parse(text: str) -> Policy:
 
 
 class PolicyCompiler:
-    """
-    Compile a Policy into a callable runtime monitor.
+    """Run a Policy's DENY rules against a prompt.
 
     check(text, history=None) → (violated: bool, categories: list[str])
 
-    Injection patterns (roleplay bypasses, instruction overrides) are detected
-    on top of keyword violations and prepended to the category list as
-    "[injection-attempt]" so the audit log surfaces them explicitly.
+    Injection patterns are detected on top of keyword violations and prepended
+    to the category list as `[injection-attempt]` so the audit log surfaces
+    them explicitly.
+
+    For paraphrase/multilingual robustness, layer this with an LLM-based guard
+    via src/guard.py instead of relying on keyword matching alone.
     """
 
     def __init__(self, policy: Policy):
@@ -208,7 +199,6 @@ class PolicyCompiler:
     ) -> tuple[bool, list[str]]:
         combined = _combine(text, history)
         violated = [r.category for r in self.policy.denied if r.matches(combined)]
-        # If a keyword violation is wrapped in an injection pattern, flag it explicitly.
         if violated and any(p.search(combined) for p in _INJECTION_PATTERNS):
             violated = ["[injection-attempt]"] + violated
         return bool(violated), violated
@@ -216,98 +206,3 @@ class PolicyCompiler:
     def __repr__(self) -> str:
         cats = [r.category for r in self.policy.denied]
         return f"PolicyCompiler(deny={cats})"
-
-
-class PolicyAllocator:
-    """Allocator driven by a compiled policy: DENY → low_privilege, else rmax.
-
-    Privilege is resolved in this order:
-      1. If user_role is in the IAMConfig roles, compute privilege via IAMConfig.
-      2. Else if user_role is in role_privileges dict, use that value directly.
-      3. Otherwise apply content-based policy: DENY → low_privilege, ALLOW → rmax.
-
-    Args:
-        iam: IAMConfig for role-based privilege resolution. Supersedes role_privileges
-             when provided.
-        role_privileges: Legacy mapping of role name → absolute privilege level.
-                         e.g. {"hr_admin": rmax, "manager": 50, "anonymous": 1}
-        default_deny: When True, prompts matching injection patterns are denied
-                      even without a keyword match.
-    """
-
-    def __init__(
-        self,
-        compiler: PolicyCompiler,
-        tokenizer,
-        low_privilege: int = 1,
-        default_deny: bool = False,
-        role_privileges: dict[str, int] | None = None,
-        iam=None,  # IAMConfig — optional, avoids circular import at type level
-    ):
-        self.compiler = compiler
-        self.tokenizer = tokenizer
-        self.low_privilege = low_privilege
-        self.default_deny = default_deny
-        self.role_privileges = role_privileges or {}
-        self.iam = iam
-
-    def allocate(
-        self,
-        model,
-        input_ids: torch.Tensor,
-        rmax: int,
-        history: list[str] | None = None,
-        user_role: str | None = None,
-        **_,
-    ) -> int:
-        # IAMConfig-based override: computed privilege for known roles.
-        if self.iam and user_role and user_role in self.iam.roles:
-            g = self.iam.resolve_privilege(user_role, rmax, self.low_privilege)
-            print(f"  [policy] iam role={user_role!r} → privilege {g}")
-            return g
-
-        # Legacy role_privileges dict override.
-        if user_role and user_role in self.role_privileges:
-            g = min(self.role_privileges[user_role], rmax)
-            print(f"  [policy] role={user_role!r} → privilege {g}")
-            return g
-
-        text = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
-        violated, categories = self.compiler.check(text, history)
-
-        if not violated and self.default_deny and any(p.search(text) for p in _INJECTION_PATTERNS):
-            violated = True
-            categories = ["[suspicious-pattern]"]
-            print(f"  [policy] DENY (injection pattern, no keyword match) → {categories}")
-            return self.low_privilege
-
-        if violated:
-            print(f"  [policy] DENY → {categories}  (privilege: {rmax} → {self.low_privilege})")
-        else:
-            print(f"  [policy] ALLOW  (privilege: {rmax})")
-        return self.low_privilege if violated else rmax
-
-    def generate(
-        self,
-        model,
-        input_ids,
-        attention_mask=None,
-        rmax=None,
-        history=None,
-        user_role: str | None = None,
-        **generate_kwargs,
-    ):
-        from .enforcer import get_rmax, set_privilege
-
-        if rmax is None:
-            rmax = get_rmax(model)
-        g = self.allocate(model, input_ids, rmax, history=history, user_role=user_role)
-        set_privilege(model, g)
-        with torch.no_grad():
-            output = model.generate(
-                input_ids,
-                attention_mask=attention_mask,
-                pad_token_id=self.tokenizer.eos_token_id,
-                **generate_kwargs,
-            )
-        return output, g
