@@ -1,4 +1,8 @@
-"""Chat routes: blocking /api/chat and streaming /api/chat/stream."""
+"""Chat routes: blocking /api/chat and streaming /api/chat/stream.
+
+Every request goes through PolicyGate before the LLM is called. Denied
+prompts never reach the model — the gate's deny message is returned instead.
+"""
 
 import asyncio
 import json
@@ -12,13 +16,11 @@ from fastapi.responses import StreamingResponse
 from ..backends import (
     anthropic_chat,
     get_response,
-    nlpn_generate,
     ollama_model,
     ollama_stream_to_queue,
 )
 from ..config import OLLAMA_PREFERRED
-from ..helpers import policy_check, sanitize
-from ..registry import model_registry
+from ..helpers import policy_check
 from ..schemas import ChatRequest, StreamChatRequest
 
 router = APIRouter()
@@ -26,7 +28,10 @@ router = APIRouter()
 
 @router.post("/api/chat")
 async def chat(request: Request, req: ChatRequest):
-    decision, violations = policy_check(req.policy_name, req.message)
+    history_text = [m.content for m in req.history]
+    decision, violations = policy_check(
+        req.policy_name, req.message, user_role=req.user_role, history=history_text
+    )
 
     if decision == "DENY":
         rules = ", ".join(violations)
@@ -37,22 +42,6 @@ async def chat(request: Request, req: ChatRequest):
             "model": "policy-enforcer",
         }
 
-    if req.policy_name:
-        model, tokenizer = model_registry.get(sanitize(req.policy_name))
-        if model is not None:
-            loop = asyncio.get_event_loop()
-            safe = sanitize(req.policy_name)
-            response, model_name = await loop.run_in_executor(
-                None,
-                lambda: nlpn_generate(model, tokenizer, req.message, safe, req.user_role),
-            )
-            return {
-                "decision": "ALLOW",
-                "violations": [],
-                "response": response,
-                "model": model_name,
-            }
-
     history = [{"role": m.role, "content": m.content} for m in req.history]
     response, model_name = get_response(req.message, history)
     return {"decision": "ALLOW", "violations": [], "response": response, "model": model_name}
@@ -60,7 +49,10 @@ async def chat(request: Request, req: ChatRequest):
 
 @router.post("/api/chat/stream")
 async def chat_stream(request: Request, req: StreamChatRequest):
-    decision, violations = policy_check(req.policy_name, req.message)
+    history_text = [m.content for m in req.history]
+    decision, violations = policy_check(
+        req.policy_name, req.message, user_role=req.user_role, history=history_text
+    )
 
     async def event_generator():
         yield f"data: {json.dumps({'type': 'policy', 'decision': decision, 'violations': violations})}\n\n"
@@ -71,22 +63,6 @@ async def chat_stream(request: Request, req: StreamChatRequest):
             yield f"data: {json.dumps({'type': 'done', 'model': 'policy-enforcer'})}\n\n"
             return
 
-        # NLPN model — generate then stream word-by-word
-        if req.policy_name:
-            model, tokenizer = model_registry.get(sanitize(req.policy_name))
-            if model is not None:
-                loop = asyncio.get_event_loop()
-                safe = sanitize(req.policy_name)
-                response, model_name = await loop.run_in_executor(
-                    None,
-                    lambda: nlpn_generate(model, tokenizer, req.message, safe, req.user_role),
-                )
-                for word in response.split():
-                    yield f"data: {json.dumps({'type': 'chunk', 'text': word + ' '})}\n\n"
-                yield f"data: {json.dumps({'type': 'done', 'model': model_name})}\n\n"
-                return
-
-        # Ollama streaming
         ollama = ollama_model()
         if ollama:
             q: queue.Queue = queue.Queue()
@@ -103,7 +79,6 @@ async def chat_stream(request: Request, req: StreamChatRequest):
             yield f"data: {json.dumps({'type': 'done', 'model': f'ollama/{ollama}'})}\n\n"
             return
 
-        # Anthropic fallback (non-streaming)
         if os.environ.get("ANTHROPIC_API_KEY"):
             history = [{"role": m.role, "content": m.content} for m in req.history]
             loop = asyncio.get_event_loop()

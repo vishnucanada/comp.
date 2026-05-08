@@ -9,7 +9,6 @@ services:
       - OLLAMA_HOST=http://ollama:11434
     volumes:
       - ./policies:/app/policies
-      - ./nlpn_checkpoints:/app/nlpn_checkpoints
       - ./audit:/app/audit
     depends_on:
       - ollama

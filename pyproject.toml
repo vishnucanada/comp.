@@ -4,30 +4,31 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "comp"
-version = "0.2.0"
-description = "Nested Least-Privilege Networks — layer-level capability suppression for LLMs"
+version = "0.3.0"
+description = "Policy-as-code for LLM API calls — pluggable content guards, IAM, and audit logs"
 requires-python = ">=3.10"
-dependencies = [
-    "torch>=2.0",
-    "transformers>=4.40",
-    "anthropic>=0.25",
-]
+dependencies = []
 
 [project.scripts]
 comp = "src.cli:main"
 
 [project.optional-dependencies]
+openai = [
+    "openai>=1.0",
+]
+llamaguard = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "accelerate>=0.27",
+]
+yaml = [
+    "pyyaml>=6.0",
+]
 dashboard = [
     "fastapi>=0.100",
     "uvicorn>=0.23",
     "pydantic>=2.0",
-]
-semantic = [
-    "sentence-transformers>=2.7",
-]
-quantize = [
-    "bitsandbytes>=0.41",
-    "accelerate>=0.27",
+    "anthropic>=0.25",
 ]
 dev = [
     "pytest>=8.0",
@@ -37,7 +38,7 @@ dev = [
     "pre-commit>=3.7",
 ]
 all = [
-    "comp[dashboard,semantic,quantize]",
+    "comp[openai,yaml,dashboard]",
 ]
 
 [tool.setuptools.packages.find]

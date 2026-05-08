@@ -1,5 +1,4 @@
-"""
-comp. Admin Dashboard — FastAPI application.
+"""comp. Admin Dashboard — FastAPI application.
 
 Entry point for ``uvicorn dashboard:app``.
 """
@@ -19,12 +18,12 @@ from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 
 from .config import ALLOWED_ORIGINS, STATIC_DIR  # noqa: E402
 from .routers import admin as admin_router  # noqa: E402
-from .routers import chat, models, policies, training  # noqa: E402
+from .routers import chat, policies  # noqa: E402
 
 app = FastAPI(
-    title="comp. — Nested Least-Privilege Networks",
-    description="Policy-enforced LLM deployment via rank-restricted transformer layers.",
-    version="0.2.0",
+    title="comp. — Policy-as-Code for LLM API Calls",
+    description="Pluggable content guards, IAM, and audit logs for any LLM backend.",
+    version="0.3.0",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -34,9 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router)
-app.include_router(models.router)
 app.include_router(policies.router)
-app.include_router(training.router)
 app.include_router(admin_router.router)
 
 
@@ -58,4 +55,4 @@ async def dashboard_page():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("dashboard:app", host="0.0.0.0", port=8000)
+    uvicorn.run("dashboard:app", host="127.0.0.1", port=8000)

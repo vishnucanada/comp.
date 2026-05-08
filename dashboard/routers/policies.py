@@ -1,4 +1,4 @@
-"""Policy CRUD and enact (translate + test) routes."""
+"""Policy CRUD and enact (validate against test cases) routes."""
 
 import contextlib
 import json
@@ -62,22 +62,23 @@ async def delete_policy(name: str, _auth=Depends(_require_auth)):
 
 @router.post("/api/enact")
 async def enact_policy(req: EnactRequest, _auth=Depends(_require_auth)):
-    from src.policy import PolicyCompiler
-    from src.translator import PolicyTranslator
+    """Validate a structured policy against test cases and (optionally) save it.
 
-    structured_text = None
+    The dashboard composes the structured DSL on the client and posts it here
+    along with a list of test cases. We parse, run each prompt through the
+    keyword compiler, and report which ones matched the user's expectation.
+    """
+    from src.policy import Policy, PolicyCompiler
+
     try:
-        policy = PolicyTranslator().translate(req.description)
-        structured_text = policy.to_text()
+        policy = Policy.from_text(req.structured)
     except Exception as e:
-        raise HTTPException(500, f"Translation error: {e}") from e
+        raise HTTPException(400, f"Invalid policy: {e}") from e
 
     compiler = PolicyCompiler(policy)
     results = []
     for tc in req.test_cases:
         violated, categories = compiler.check(tc.prompt)
-        privilege = req.low_privilege if violated else req.rmax
-        privilege_pct = round((privilege / req.rmax) * 100)
         decision = "DENY" if violated else "ALLOW"
         results.append(
             {
@@ -86,18 +87,16 @@ async def enact_policy(req: EnactRequest, _auth=Depends(_require_auth)):
                 "decision": decision,
                 "correct": decision == tc.expected.upper(),
                 "violations": categories,
-                "privilege": privilege,
-                "privilege_pct": privilege_pct,
             }
         )
 
     correct = sum(1 for r in results if r["correct"])
     safe = sanitize(req.policy_name)
     if safe:
-        _persist_policy(safe, req.description, structured_text)
+        _persist_policy(safe, req.description, req.structured)
 
     return {
-        "structured": structured_text,
+        "structured": req.structured,
         "results": results,
         "summary": {
             "total": len(results),

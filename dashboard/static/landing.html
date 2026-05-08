@@ -156,7 +156,7 @@
   <div class="nav-links">
     <a class="nav-link" href="#problem">Why comp.</a>
     <a class="nav-link" href="#how-it-works">How it works</a>
-    <a class="nav-link" href="#compliance">Compliance</a>
+    <a class="nav-link" href="#guards">Guards</a>
   </div>
   <a class="nav-cta" href="/dashboard">Open Dashboard →</a>
 </nav>
@@ -165,15 +165,15 @@
 <div class="hero">
   <div class="hero-label">
     <span class="dot-green"></span>
-    AI Compliance Infrastructure
+    Policy-as-Code for LLM API Calls
   </div>
 
-  <h1>Your AI Can't Leak Data<br/><span class="dim">It Doesn't Have Access To</span></h1>
+  <h1>Gate every LLM call.<br/><span class="dim">Audit every decision.</span></h1>
 
   <p class="hero-sub">
-    comp. enforces data policies by restricting what language models can <em>compute</em>
-    at low privilege — not just what they can say. Structural enforcement.
-    Not a filter you can jailbreak.
+    comp. is a small enforcement layer for any LLM backend. Define DENY/ALLOW
+    rules in a text policy, plug in the content guard you trust, and route every
+    request through PolicyGate. Decisions land in an append-only audit log.
   </p>
 
   <div class="hero-actions">
@@ -182,12 +182,12 @@
   </div>
 
   <div class="liability-bar">
-    <div class="liability-icon">⚠️</div>
+    <div class="liability-icon">🛈</div>
     <div class="liability-text">
-      <strong>The average cost of a data breach involving AI systems is $4.88M</strong>
-      (IBM 2024). Prompt injection and jailbreaking bypass output filters with a single
-      sentence. comp. makes denied capabilities structurally unreachable —
-      compliance auditors can verify it without running the model.
+      <strong>This is operational infrastructure, not a compliance certification.</strong>
+      comp. helps you version policies, enforce them at the API boundary, and keep
+      a tamper-evident record of what was blocked and why. The strength of
+      enforcement depends on the guard backend you choose.
     </div>
   </div>
 </div>

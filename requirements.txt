@@ -1,16 +1,19 @@
-# core
-torch>=2.0
-transformers>=4.40
-anthropic>=0.25
+# Core has zero runtime dependencies — install with `pip install -e .`
+# This file is for the dashboard + dev workflow.
 
-# dashboard
+# Dashboard
 fastapi>=0.100
 uvicorn>=0.23
 pydantic>=2.0
-slowapi>=0.1.9
+anthropic>=0.25
 
-# semantic policy matching (optional but recommended)
-sentence-transformers>=2.7
+# Optional guard backends — install only the one(s) you need.
+# openai>=1.0
+# torch>=2.0
+# transformers>=4.40
 
-# dev / test
+# YAML IAM configs
+pyyaml>=6.0
+
+# Dev / test
 pytest>=8.0

@@ -17,9 +17,8 @@ class TestCase(BaseModel):
 class EnactRequest(BaseModel):
     policy_name: str = Field(..., max_length=64)
     description: str = Field(..., max_length=4096)
-    test_cases: list[TestCase]
-    low_privilege: int = 1
-    rmax: int = 100
+    structured: str = Field(..., max_length=16384)
+    test_cases: list[TestCase] = []
 
 
 class ChatMessage(BaseModel):
@@ -39,10 +38,3 @@ class StreamChatRequest(BaseModel):
     policy_name: str | None = Field(None, max_length=64)
     history: list[ChatMessage] = []
     user_role: str | None = Field(None, max_length=64)
-
-
-class TrainRequest(BaseModel):
-    model_id: str = "Qwen/Qwen2.5-0.5B"
-    epochs: int = Field(3, ge=1, le=20)
-    lr: float = Field(1e-4, gt=0)
-    orth_reg: float = Field(0.0, ge=0)

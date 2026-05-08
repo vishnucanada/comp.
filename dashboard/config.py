@@ -9,16 +9,19 @@ ROOT = Path(__file__).parent.parent
 # Directories
 STATIC_DIR = Path(__file__).parent / "static"
 POLICIES_DIR = ROOT / "policies"
-CHECKPOINTS_DIR = ROOT / "nlpn_checkpoints"
+AUDIT_DIR = ROOT / "audit"
 
 POLICIES_DIR.mkdir(exist_ok=True)
-(ROOT / "audit").mkdir(exist_ok=True)
+AUDIT_DIR.mkdir(exist_ok=True)
 
-# LLM backend settings
+# LLM backend settings (for the gated chat endpoint)
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_PREFERRED = "qwen2.5:0.5b"
 ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 ANTHROPIC_MAX_TOK = 1024
+
+# Guard backend selection: keyword | openai | llamaguard | openai+keyword
+GUARD_BACKEND = os.environ.get("COMP_GUARD_BACKEND", "keyword")
 
 # Security
 API_KEY = os.environ.get("API_KEY", "")

@@ -1,11 +1,13 @@
-"""LLM backends: Ollama, Anthropic, NLPN rank-restricted generation, SSE streaming."""
+"""LLM chat backends used by the dashboard: Ollama, Anthropic, with SSE streaming.
+
+The gate is applied separately in dashboard/routers/chat.py before any of these
+are called, so the backends here only handle generation.
+"""
 
 import json
 import os
 import queue
 import urllib.request as _urllib
-
-import torch
 
 from .config import (
     ANTHROPIC_MAX_TOK,
@@ -13,7 +15,6 @@ from .config import (
     OLLAMA_BASE_URL,
     OLLAMA_PREFERRED,
 )
-from .helpers import _load_policy
 
 
 def ollama_model() -> str | None:
@@ -80,52 +81,6 @@ def get_response(message: str, history: list[dict]) -> tuple[str, str]:
         f"or set ANTHROPIC_API_KEY.",
         "none",
     )
-
-
-def nlpn_generate(
-    model,
-    tokenizer,
-    message: str,
-    policy_name: str,
-    user_role: str | None = None,
-) -> tuple[str, str]:
-    """Generate with rank-restricted NLPN model, applying policy-derived privilege.
-
-    user_role, when provided, is matched against the policy's role_privileges map
-    before falling back to content-based allocation.
-    """
-    from src.enforcer import get_rmax, set_privilege
-    from src.policy import PolicyAllocator, PolicyCompiler
-
-    from .config import CHECKPOINTS_DIR
-
-    rmax = get_rmax(model)
-    enc = tokenizer(message, return_tensors="pt")
-    policy = _load_policy(policy_name)
-
-    low_g = 1
-    try:
-        cfg = json.loads((CHECKPOINTS_DIR / policy_name / "nlpn_config.json").read_text())
-        low_g = cfg.get("low_g", 1)
-    except Exception:
-        pass
-
-    if policy:
-        allocator = PolicyAllocator(PolicyCompiler(policy), tokenizer, low_privilege=low_g)
-        g = allocator.allocate(model, enc["input_ids"], rmax=rmax, user_role=user_role)
-    else:
-        g = rmax
-
-    set_privilege(model, g)
-    with torch.no_grad():
-        out = model.generate(
-            enc["input_ids"],
-            max_new_tokens=200,
-            pad_token_id=tokenizer.eos_token_id,
-            do_sample=False,
-        )
-    new_ids = out[0][enc["input_ids"].shape[1] :]
-    return tokenizer.decode(new_ids, skip_special_tokens=True), f"nlpn/{policy_name}"
 
 
 def ollama_stream_to_queue(
