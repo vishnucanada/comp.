@@ -70,8 +70,11 @@ async def enact_policy(req: EnactRequest, _auth=Depends(_require_auth)):
     """
     from src.policy import Policy, PolicyCompiler
 
+    structured_text = req.structured or req.description
+    if not structured_text.strip():
+        raise HTTPException(400, "Policy is empty")
     try:
-        policy = Policy.from_text(req.structured)
+        policy = Policy.from_text(structured_text)
     except Exception as e:
         raise HTTPException(400, f"Invalid policy: {e}") from e
 
@@ -93,10 +96,10 @@ async def enact_policy(req: EnactRequest, _auth=Depends(_require_auth)):
     correct = sum(1 for r in results if r["correct"])
     safe = sanitize(req.policy_name)
     if safe:
-        _persist_policy(safe, req.description, req.structured)
+        _persist_policy(safe, req.description, structured_text)
 
     return {
-        "structured": req.structured,
+        "structured": structured_text,
         "results": results,
         "summary": {
             "total": len(results),

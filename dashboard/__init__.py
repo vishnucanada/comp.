@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 
 from .config import ALLOWED_ORIGINS, STATIC_DIR  # noqa: E402
 from .routers import admin as admin_router  # noqa: E402
-from .routers import chat, policies  # noqa: E402
+from .routers import chat, models, policies  # noqa: E402
 
 app = FastAPI(
     title="comp. — Policy-as-Code for LLM API Calls",
@@ -33,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router)
+app.include_router(models.router)
 app.include_router(policies.router)
 app.include_router(admin_router.router)
 

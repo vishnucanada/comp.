@@ -563,11 +563,14 @@ async function enact() {
 
   try {
     const data = await api('/api/enact', 'POST', {
-      policy_name: name, description, test_cases: testCases, rmax: 100,
+      policy_name: name,
+      description,
+      structured: description,
+      test_cases: testCases,
     });
     if (data.structured) {
       compiledText = data.structured;
-      showCompiledPanel(data.structured, 'Extracted from your policy description using NLP.');
+      showCompiledPanel(data.structured, 'Parsed policy DSL — these are the rules the gate will enforce.');
     }
     renderResults(data);
     await loadPolicies();
@@ -620,8 +623,6 @@ function renderResults({ summary, results }) {
       <span class="r-badge">${r.decision}</span>
       <span class="r-prompt">${esc(r.prompt)}</span>
       <span class="r-cats">${esc(r.violations.length ? r.violations.join(', ') : '—')}</span>
-      <div class="priv-bar"><div class="priv-fill" style="width:${r.privilege_pct}%"></div></div>
-      <span class="priv-pct">${r.privilege_pct}%</span>
     </div>`).join('');
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }

@@ -16,8 +16,11 @@ class TestCase(BaseModel):
 
 class EnactRequest(BaseModel):
     policy_name: str = Field(..., max_length=64)
-    description: str = Field(..., max_length=4096)
-    structured: str = Field(..., max_length=16384)
+    description: str = Field("", max_length=4096)
+    # `structured` is the policy DSL itself. If absent we fall back to using
+    # `description` as the DSL — supports older clients that put the rules in
+    # the description field.
+    structured: str | None = Field(None, max_length=16384)
     test_cases: list[TestCase] = []
 
 

@@ -195,77 +195,78 @@
 <!-- ── Proof strip ────────────────────────────────────────────────────────── -->
 <div class="proof-strip">
   <div class="proof-item">
-    <div class="proof-num">6+</div>
-    <div class="proof-label">Pre-built regulatory policies</div>
+    <div class="proof-num">3</div>
+    <div class="proof-label">Pluggable guard backends</div>
   </div>
   <div class="proof-item">
-    <div class="proof-num">&lt; 60s</div>
-    <div class="proof-label">From policy text to enforcement</div>
+    <div class="proof-num">Any</div>
+    <div class="proof-label">LLM (Claude, GPT, Ollama, local)</div>
+  </div>
+  <div class="proof-item">
+    <div class="proof-num">JSONL</div>
+    <div class="proof-label">Append-only decision log</div>
   </div>
   <div class="proof-item">
     <div class="proof-num">0</div>
-    <div class="proof-label">Prompt injection bypass vectors</div>
-  </div>
-  <div class="proof-item">
-    <div class="proof-num">Drop-in</div>
-    <div class="proof-label">OpenAI-compatible API</div>
+    <div class="proof-label">Required runtime dependencies</div>
   </div>
 </div>
 
 <!-- ── Problem section ────────────────────────────────────────────────────── -->
 <section id="problem">
   <div class="section-label">The problem</div>
-  <h2>Output filters are a legal liability</h2>
+  <h2>You're already calling LLMs. You don't yet have a record of why.</h2>
   <p class="section-sub">
-    Every AI guardrail on the market works the same way: generate first, filter the output.
-    But the model already computed the answer — it was just redacted.
+    Every team gating a Claude or GPT call cobbles together a mix of system prompts,
+    keyword regexes, and ad-hoc moderation calls. There is no single record of what
+    was blocked, by which rule, for which user.
   </p>
 
   <table class="compare-table">
     <thead>
       <tr>
         <th style="width:34%">Capability</th>
-        <th style="width:22%">Output filters<br/>(Guardrails, Llama Guard)</th>
-        <th style="width:22%" class="col-comp">comp. NLPN</th>
-        <th style="width:22%">System prompt<br/>instructions</th>
+        <th style="width:22%">System prompts</th>
+        <th style="width:22%" class="col-comp">comp. gate</th>
+        <th style="width:22%">Hand-rolled regex</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Resists jailbreak / prompt injection</td>
-        <td><span class="cross">✗</span> Model computed it; filter is bypassed</td>
-        <td class="col-comp"><span class="check">✓</span> Capability structurally absent at low g</td>
+        <td>Policies live in version control as text</td>
+        <td><span class="cross">✗</span> Embedded in code or config</td>
+        <td class="col-comp"><span class="check">✓</span> Plain-text DSL, diffable</td>
+        <td><span class="cross">✗</span> Scattered across files</td>
+      </tr>
+      <tr>
+        <td>Same gate works with any LLM provider</td>
+        <td><span class="check">✓</span> Per-provider only</td>
+        <td class="col-comp"><span class="check">✓</span> Provider-agnostic wrapper</td>
+        <td><span class="check">✓</span> Per-call</td>
+      </tr>
+      <tr>
+        <td>Pluggable guard backend</td>
+        <td><span class="cross">✗</span> No detection layer</td>
+        <td class="col-comp"><span class="check">✓</span> Keyword, OpenAI moderation, Llama Guard 3</td>
+        <td><span class="cross">✗</span> Whatever you wrote</td>
+      </tr>
+      <tr>
+        <td>Tamper-evident decision log</td>
+        <td><span class="cross">✗</span> No audit trail</td>
+        <td class="col-comp"><span class="check">✓</span> Append-only JSONL with prompt hashes</td>
+        <td><span class="cross">✗</span> Whatever you logged</td>
+      </tr>
+      <tr>
+        <td>IAM-style role bypass &amp; tool allowlists</td>
+        <td><span class="cross">✗</span></td>
+        <td class="col-comp"><span class="check">✓</span> YAML-defined roles</td>
+        <td><span class="cross">✗</span></td>
+      </tr>
+      <tr>
+        <td>Resists novel jailbreaks</td>
         <td><span class="cross">✗</span> Single sentence overrides</td>
-      </tr>
-      <tr>
-        <td>Auditable without running the model</td>
-        <td><span class="cross">✗</span> Output-only — no structural proof</td>
-        <td class="col-comp"><span class="check">✓</span> W(g) matrix rank provably bounded</td>
-        <td><span class="cross">✗</span> No verifiable property</td>
-      </tr>
-      <tr>
-        <td>Zero latency overhead on ALLOW path</td>
-        <td><span class="cross">✗</span> Full generation + post-processing</td>
-        <td class="col-comp"><span class="check">✓</span> Policy check is O(tokens × keywords)</td>
-        <td><span class="check">✓</span> No overhead</td>
-      </tr>
-      <tr>
-        <td>Tiered privilege (GDPR Article 9 etc.)</td>
-        <td><span class="cross">✗</span> Binary block/allow only</td>
-        <td class="col-comp"><span class="check">✓</span> Continuous g ∈ [1, rmax]</td>
-        <td><span class="cross">✗</span> Binary only</td>
-      </tr>
-      <tr>
-        <td>Pre-built regulatory policies</td>
-        <td><span class="cross">✗</span> Custom rules per deployment</td>
-        <td class="col-comp"><span class="check">✓</span> HIPAA, GDPR, PCI-DSS, SOC 2, CCPA, financial</td>
-        <td><span class="cross">✗</span> Manual per deployment</td>
-      </tr>
-      <tr>
-        <td>OpenAI-compatible drop-in API</td>
-        <td><span class="cross">✗</span> Separate proxy required</td>
-        <td class="col-comp"><span class="check">✓</span> POST /v1/chat/completions</td>
-        <td><span class="cross">✗</span> Not applicable</td>
+        <td class="col-comp">Depends on the guard you plug in</td>
+        <td><span class="cross">✗</span> Brittle</td>
       </tr>
     </tbody>
   </table>
@@ -274,61 +275,58 @@
 <!-- ── How it works ───────────────────────────────────────────────────────── -->
 <section id="how-it-works">
   <div class="section-label">How it works</div>
-  <h2>Compliance baked into the weights</h2>
+  <h2>One gate, one log, one policy file</h2>
   <p class="section-sub">
-    comp. replaces every Linear layer in your model with a rank-factorized equivalent.
-    At low privilege only the first g rank-1 components are active —
-    the computation path for denied information simply doesn't exist.
+    comp. is a small Python library. Wrap your existing LLM call with PolicyGate
+    and every request goes through the same pipeline: policy → guard → decision → log.
   </p>
 
   <div class="steps">
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
-        <div class="step-title">Define your compliance policy in plain English</div>
+        <div class="step-title">Write a policy file</div>
         <div class="step-desc">
-          Open the dashboard and paste your compliance requirements exactly as you'd
-          write them for legal — or load one of our pre-built HIPAA, GDPR, PCI-DSS,
-          SOC 2, CCPA, or financial-services policies with one click.
+          A short DENY/ALLOW DSL with keyword matchers and optional regexes. Keep
+          it in your repo so changes go through the same review process as code.
         </div>
-        <span class="step-tag">60-second setup</span>
+        <span class="step-tag">policy.txt</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-content">
-        <div class="step-title">We fine-tune your model's weights — not a wrapper</div>
+        <div class="step-title">Pick a guard backend</div>
         <div class="step-desc">
-          Algorithm 1 adjusts the B matrices in NLPN layers so that at low privilege
-          the model genuinely can't compute denied answers, while full-privilege
-          behaviour is provably preserved. Training takes 3–8 minutes on an M-series Mac.
+          KeywordGuard for the cheap default. OpenAIModerationGuard for free, fast,
+          managed-taxonomy detection. LlamaGuardGuard for self-hosted deployments
+          where outside API calls aren't an option. Compose multiple guards if you want.
         </div>
-        <span class="step-tag">No capability regression</span>
+        <span class="step-tag">make_guard(policy, backend="openai")</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-content">
-        <div class="step-title">Every request is privilege-allocated in real time</div>
+        <div class="step-title">Wrap your existing LLM call</div>
         <div class="step-desc">
-          The policy compiler checks each prompt against your rules. A DENY match drops
-          the model to low privilege — the denied capability is structurally unreachable
-          for that generation. No post-processing, no second model, no latency hit on
-          the ALLOW path.
+          Pass any callable to gate.complete(). If the policy denies the prompt the
+          callable is never invoked; otherwise it runs unchanged. No request reaches
+          your model without a recorded decision.
         </div>
-        <span class="step-tag">g = 1% of rmax on DENY</span>
+        <span class="step-tag">gate.complete(prompt, fn=lambda m: claude(m))</span>
       </div>
     </div>
     <div class="step">
       <div class="step-num">4</div>
       <div class="step-content">
-        <div class="step-title">Compliance auditors verify the math, not the logs</div>
+        <div class="step-title">Review the audit log</div>
         <div class="step-desc">
-          Because Im(W(g)) ⊆ Im(W(g+1)) is provable from the weight matrices alone,
-          your auditor doesn't need to run the model to confirm compliance.
-          GDPR tiered enforcement and tamper-evident audit logs are built in.
+          Every decision is appended as one JSONL line with a hashed prompt, the
+          user role, the categories that fired, and which guard returned the verdict.
+          Aggregate from the dashboard or pipe to your SIEM.
         </div>
-        <span class="step-tag">Verifiable without inference</span>
+        <span class="step-tag">audit/gate.jsonl</span>
       </div>
     </div>
   </div>
@@ -337,126 +335,106 @@
 <!-- ── Features ───────────────────────────────────────────────────────────── -->
 <section>
   <div class="section-label">Features</div>
-  <h2>Everything your compliance team needs</h2>
-  <p class="section-sub">Built for legal, engineering, and auditors — all in one platform.</p>
+  <h2>Operational tools that read like normal Python</h2>
+  <p class="section-sub">No special runtime, no model retraining. Bring your own LLM.</p>
 
   <div class="features-grid">
     <div class="feature-card">
-      <div class="feature-icon">🏛️</div>
-      <div class="feature-title">Pre-built Regulatory Library</div>
+      <div class="feature-icon">📝</div>
+      <div class="feature-title">Policy DSL in plain text</div>
       <div class="feature-desc">
-        Ready-to-deploy policies for HIPAA, GDPR, PCI-DSS, SOC 2, CCPA, and financial services.
-        Install with one click — no policy writing required.
+        DENY / ALLOW rules with keyword matchers and optional regexes.
+        Lives in your repo. Diffs cleanly. No magic.
       </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔌</div>
-      <div class="feature-title">OpenAI-Compatible API</div>
+      <div class="feature-title">Bring your own LLM</div>
       <div class="feature-desc">
-        Drop in POST /v1/chat/completions. Your existing application connects to comp.
-        instead of OpenAI — enforcement is transparent to your code.
+        gate.complete() takes any callable. Works with Claude, GPT, Ollama,
+        local Hugging Face models, or whatever you already have.
       </div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🏢</div>
-      <div class="feature-title">Multi-Tenant Isolation</div>
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">Pluggable content guards</div>
       <div class="feature-desc">
-        Each tenant gets separate policy, checkpoint, and audit namespaces.
-        Usage metering per tenant for billing. X-Tenant-ID header routing.
+        KeywordGuard (cheap), OpenAIModerationGuard (free, fast),
+        LlamaGuardGuard (self-hosted), or a CompositeGuard over several at once.
       </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔐</div>
-      <div class="feature-title">RBAC &amp; Admin Audit Trail</div>
+      <div class="feature-title">IAM-style roles</div>
       <div class="feature-desc">
-        Admin, policy-editor, and viewer roles. HMAC-signed admin action log.
-        Every policy save, model load, and privilege change is recorded with IP and timestamp.
+        YAML-defined roles, full-privilege bypass for admins, tool allowlists
+        per role. Unknown role names never silently inherit defaults.
       </div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🧪</div>
-      <div class="feature-title">Red-Team Benchmarks</div>
+      <div class="feature-icon">📜</div>
+      <div class="feature-title">Append-only audit log</div>
       <div class="feature-desc">
-        60+ adversarial bypass attempts across jailbreak, hypothetical, encoding, and indirect
-        categories. Built-in comparison vs. output-filter baselines.
-      </div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📊</div>
-      <div class="feature-title">GDPR Tiered Enforcement</div>
-      <div class="feature-desc">
-        Article 9 special categories at 1% of rmax, standard PII at 5%, pseudonymised
-        data at 20%. Tamper-evident JSONL audit log with HMAC signing.
+        Every decision lands in a JSONL log: timestamp, hashed prompt, role,
+        verdict, fired categories, guard backend. Pipe straight to your SIEM.
       </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">⚡</div>
-      <div class="feature-title">Streaming Chat API</div>
+      <div class="feature-title">Streaming-friendly</div>
       <div class="feature-desc">
-        Server-Sent Events streaming with policy decision in first chunk.
-        Works with any SSE-capable frontend — React, Vue, plain JavaScript.
+        Server-Sent Events from the dashboard chat with the policy decision
+        in the first chunk, then the model's tokens.
       </div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">📝</div>
-      <div class="feature-title">Policy Version History</div>
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Compliance reports</div>
       <div class="feature-desc">
-        Every policy save creates a timestamped archive. Roll back to any previous version
-        from the dashboard. Full audit trail of policy changes.
+        comp report renders Markdown / JSON summaries from the audit log:
+        deny rate, top categories, requests per role, decisions per backend.
       </div>
     </div>
     <div class="feature-card">
-      <div class="feature-icon">🤖</div>
-      <div class="feature-title">Natural Language Policies</div>
+      <div class="feature-icon">🧰</div>
+      <div class="feature-title">Zero runtime dependencies</div>
       <div class="feature-desc">
-        Paste your compliance doc, HR memo, or legal requirements as-is.
-        Claude translates it into structured enforcement rules automatically.
+        The core library is stdlib only. Each guard backend is an opt-in extra:
+        comp[openai], comp[llamaguard], comp[dashboard].
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Compliance library ─────────────────────────────────────────────────── -->
-<section id="compliance" style="padding-top: 0">
-  <div class="section-label">Policy library</div>
-  <h2>Deploy in minutes, not months</h2>
+<!-- ── Guard backends ─────────────────────────────────────────────────────── -->
+<section id="guards" style="padding-top: 0">
+  <div class="section-label">Guard backends</div>
+  <h2>Pick a detection engine that fits your environment</h2>
   <p class="section-sub">
-    Pre-built policies cover the most common regulatory frameworks.
-    Customize after installing, or write your own from scratch.
+    The keyword guard is fast and deterministic but trivially bypassed by paraphrase.
+    For real-world deployments, plug in a managed or self-hosted classifier.
   </p>
 
   <div class="policy-grid">
     <div class="policy-pill">
-      <div class="policy-pill-name">HIPAA</div>
-      <div class="policy-pill-sub">18 PHI identifiers, clinical data, insurance</div>
+      <div class="policy-pill-name">KeywordGuard</div>
+      <div class="policy-pill-sub">stdlib only · keyword + regex + paraphrase map</div>
     </div>
     <div class="policy-pill">
-      <div class="policy-pill-name">GDPR</div>
-      <div class="policy-pill-sub">Special categories, tiered severity, Article 9</div>
+      <div class="policy-pill-name">OpenAI Moderation</div>
+      <div class="policy-pill-sub">free · OPENAI_API_KEY required · low latency</div>
     </div>
     <div class="policy-pill">
-      <div class="policy-pill-name">PCI-DSS</div>
-      <div class="policy-pill-sub">Card numbers, CVV, cardholder data</div>
+      <div class="policy-pill-name">Llama Guard 3</div>
+      <div class="policy-pill-sub">self-hosted · transformers + 16 GB · gated repo</div>
     </div>
     <div class="policy-pill">
-      <div class="policy-pill-name">SOC 2</div>
-      <div class="policy-pill-sub">Credentials, infrastructure, customer data</div>
-    </div>
-    <div class="policy-pill">
-      <div class="policy-pill-name">CCPA</div>
-      <div class="policy-pill-sub">CA consumer privacy, data categories</div>
-    </div>
-    <div class="policy-pill">
-      <div class="policy-pill-name">Financial Services</div>
-      <div class="policy-pill-sub">GLBA, SEC, FINRA — accounts, trading, KYC</div>
-    </div>
-    <div class="policy-pill">
-      <div class="policy-pill-name">Healthcare</div>
-      <div class="policy-pill-sub">Broader than HIPAA — mental health, genetics</div>
+      <div class="policy-pill-name">CompositeGuard</div>
+      <div class="policy-pill-sub">OR over several backends · merged categories</div>
     </div>
     <div class="policy-pill" style="border-style: dashed;">
       <div class="policy-pill-name">Custom</div>
-      <div class="policy-pill-sub">Write your own or translate from plain text</div>
+      <div class="policy-pill-sub">subclass Guard, return a GuardResult</div>
     </div>
   </div>
 </section>
@@ -464,49 +442,53 @@
 <!-- ── API preview ────────────────────────────────────────────────────────── -->
 <section style="padding-top: 0">
   <div class="section-label">Developer experience</div>
-  <h2>One line to switch from OpenAI</h2>
-  <p class="section-sub">Change the base URL and add a policy header. Every existing OpenAI call now runs through NLPN enforcement.</p>
+  <h2>Wrap your existing call</h2>
+  <p class="section-sub">No proxy, no new endpoint. The gate is a Python object — pass your model call as a callable.</p>
 
   <div class="hero-preview" style="max-width: 100%">
     <div class="preview-bar">
       <div class="preview-dot"></div>
       <div class="preview-dot"></div>
       <div class="preview-dot"></div>
-      <span class="preview-title">integration.py — OpenAI drop-in</span>
+      <span class="preview-title">integration.py — gate any LLM</span>
     </div>
-    <pre class="preview-code"><span class="cmt"># Before: direct OpenAI</span>
-<span class="kw">from</span> openai <span class="kw">import</span> <span class="cls">OpenAI</span>
-client = <span class="cls">OpenAI</span>()
+    <pre class="preview-code"><span class="kw">from</span> anthropic <span class="kw">import</span> <span class="cls">Anthropic</span>
+<span class="kw">from</span> src <span class="kw">import</span> <span class="cls">Policy</span>, <span class="cls">PolicyGate</span>, <span class="cls">IAMConfig</span>, make_guard
 
-<span class="cmt"># After: comp. enforcement (one line change)</span>
-client = <span class="cls">OpenAI</span>(
-    base_url=<span class="str">"http://localhost:8000/v1"</span>,
-    api_key=<span class="str">"your-comp-api-key"</span>,
-    default_headers={<span class="str">"policy"</span>: <span class="str">"hipaa"</span>},
+policy = <span class="cls">Policy</span>.<span class="fn">from_file</span>(<span class="str">"policies/hr.txt"</span>)
+guard  = <span class="fn">make_guard</span>(policy, backend=<span class="str">"openai"</span>)        <span class="cmt"># or "keyword", "llamaguard"</span>
+iam    = <span class="cls">IAMConfig</span>.<span class="fn">from_yaml</span>(<span class="str">"iam.yaml"</span>)
+gate   = <span class="cls">PolicyGate</span>(policy, guard=guard, iam=iam,
+                    audit_log_path=<span class="str">"audit/gate.jsonl"</span>)
+
+claude = <span class="cls">Anthropic</span>()
+
+<span class="cmt"># If the policy denies the prompt, claude is never called.</span>
+response, decision = gate.<span class="fn">complete</span>(
+    message=user_input,
+    fn=<span class="kw">lambda</span> m: claude.messages.<span class="fn">create</span>(
+        model=<span class="str">"claude-haiku-4-5-20251001"</span>,
+        max_tokens=<span class="num">512</span>,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: m}],
+    ).content[<span class="num">0</span>].text,
+    user_role=<span class="str">"analyst"</span>,
 )
 
-<span class="cmt"># Same call — NLPN enforcement is transparent</span>
-response = client.chat.completions.<span class="fn">create</span>(
-    model=<span class="str">"comp-enforced"</span>,
-    messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}],
-)
-
-<span class="cmt"># Bonus: response includes enforcement decision</span>
-<span class="fn">print</span>(response.<span class="fn">model_extra</span>[<span class="str">"x_comp_policy"</span>])
-<span class="cmt"># {'decision': 'DENY', 'violations': ['patient identifiers'], 'policy': 'hipaa'}</span></pre>
+<span class="fn">print</span>(decision)
+<span class="cmt"># GateDecision(DENY['salary information'], role='analyst', via='openai-moderation')</span></pre>
   </div>
 </section>
 
 <!-- ── CTA ────────────────────────────────────────────────────────────────── -->
 <div class="cta-section">
-  <h2>Compliance you can prove<br/>to auditors, not just promise</h2>
-  <p>Start with a pre-built HIPAA or GDPR policy. Go from zero to verified enforcement in under an hour.</p>
+  <h2>Stop scattering policy checks<br/>across every LLM call site</h2>
+  <p>One gate, one policy file, one audit log. Plug in the guard you trust.</p>
   <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
     <a class="btn-primary" href="/dashboard" style="font-size: 14px; padding: 13px 30px">
       Open Dashboard →
     </a>
-    <a class="btn-secondary" href="/api/admin/policy-library" style="font-size: 14px; padding: 13px 22px">
-      Browse Policy Library
+    <a class="btn-secondary" href="/api/policies" style="font-size: 14px; padding: 13px 22px">
+      View Policies
     </a>
   </div>
 </div>
@@ -516,7 +498,7 @@ response = client.chat.completions.<span class="fn">create</span>(
     <div class="logo-icon-sm">⬡</div>
     comp.
   </div>
-  <span>Structural AI Compliance — Nested Least-Privilege Networks</span>
+  <span>Policy-as-code for LLM API calls</span>
   <div class="spacer"></div>
   <a href="/dashboard">Dashboard</a>
   <span style="margin: 0 8px">·</span>
