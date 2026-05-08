@@ -1,16 +1,26 @@
 """Policy enforcement gate — wraps any LLM call or tool invocation.
 
-Enforcement at the call boundary. Works with any backend without model training.
+Enforcement at the call boundary. Works with any backend (Claude, GPT, Ollama,
+local models) without weight modification or fine-tuning.
 
 Usage::
 
-    gate = PolicyGate(policy, iam=iam_config, audit_log_path="audit/gate.jsonl")
+    from src.guard import KeywordGuard
+
+    gate = PolicyGate(
+        policy,
+        guard=KeywordGuard(policy),       # or OpenAIModerationGuard / LlamaGuardGuard
+        iam=iam_config,
+        audit_log_path="audit/gate.jsonl",
+    )
 
     response, decision = gate.complete(
         message="What is John's salary?",
         fn=lambda m: client.messages.create(...).content[0].text,
         user_role="anonymous",
     )
+
+The gate's decision can be appended to a JSONL audit log for compliance review.
 """
 
 from __future__ import annotations
@@ -18,11 +28,12 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from .policy import Policy, PolicyCompiler
+from .guard import Guard, KeywordGuard
+from .policy import Policy
 
 
 @dataclass
@@ -30,6 +41,7 @@ class GateDecision:
     allowed: bool
     categories: list[str]
     user_role: str | None = None
+    backend: str = ""
 
     @property
     def denied(self) -> bool:
@@ -38,7 +50,7 @@ class GateDecision:
     def __repr__(self) -> str:
         if self.allowed:
             return f"GateDecision(ALLOW, role={self.user_role!r})"
-        return f"GateDecision(DENY{self.categories}, role={self.user_role!r})"
+        return f"GateDecision(DENY{self.categories}, role={self.user_role!r}, via={self.backend!r})"
 
 
 _DENY_MESSAGE = "This request cannot be fulfilled under the current access policy."
@@ -47,10 +59,13 @@ _DENY_MESSAGE = "This request cannot be fulfilled under the current access polic
 class PolicyGate:
     """Enforce a Policy at the API boundary — no model training required.
 
-    Combines three enforcement layers:
-      1. Role-based access: IAMConfig roles with privilege="full" bypass content checks.
-      2. Tool allowlists: roles may be restricted to a named subset of tools.
-      3. Content policy: PolicyCompiler deny-rule matching on the prompt text.
+    Layers, in order:
+      1. Role-based bypass: roles with privilege="full" in the IAMConfig are
+         allowed without content checks. Unknown role names are NOT silently
+         elevated to the default role's privilege (see IAMConfig.find_role).
+      2. Tool allowlist: roles may be restricted to a named subset of tools.
+      3. Content guard: a Guard backend (default KeywordGuard) inspects the
+         prompt and returns the violated categories.
 
     Every decision can be appended to a JSONL audit log.
     """
@@ -58,12 +73,13 @@ class PolicyGate:
     def __init__(
         self,
         policy: Policy,
+        guard: Guard | None = None,
         iam=None,  # IAMConfig — optional, avoids circular import at module level
         audit_log_path: str | Path | None = None,
         deny_message: str = _DENY_MESSAGE,
     ):
         self.policy = policy
-        self.compiler = PolicyCompiler(policy)
+        self.guard = guard or KeywordGuard(policy)
         self.iam = iam
         self.deny_message = deny_message
         self._log_path: Path | None = Path(audit_log_path) if audit_log_path else None
@@ -85,12 +101,19 @@ class PolicyGate:
         if self.iam and user_role:
             role = self.iam.find_role(user_role)
             if role is not None and role.privilege == "full":
-                decision = GateDecision(allowed=True, categories=[], user_role=user_role)
+                decision = GateDecision(
+                    allowed=True, categories=[], user_role=user_role, backend="iam"
+                )
                 self._record(message, decision)
                 return decision
 
-        violated, categories = self.compiler.check(message, history)
-        decision = GateDecision(allowed=not violated, categories=categories, user_role=user_role)
+        result = self.guard.check(message, history)
+        decision = GateDecision(
+            allowed=not result.flagged,
+            categories=result.categories,
+            user_role=user_role,
+            backend=result.backend,
+        )
         self._record(message, decision)
         return decision
 
@@ -140,6 +163,7 @@ class PolicyGate:
                     allowed=False,
                     categories=[f"[tool-not-allowed:{tool_name}]"],
                     user_role=user_role,
+                    backend="iam",
                 )
                 self._record(prompt, decision)
                 return None, decision
@@ -150,7 +174,9 @@ class PolicyGate:
                 return None, decision
 
         result = fn(**args)
-        decision = GateDecision(allowed=True, categories=[], user_role=user_role)
+        decision = GateDecision(
+            allowed=True, categories=[], user_role=user_role, backend=self.guard.name
+        )
         return result, decision
 
     # ── audit log ────────────────────────────────────────────────────────────
@@ -164,6 +190,7 @@ class PolicyGate:
             "user_role": decision.user_role,
             "allowed": decision.allowed,
             "categories": decision.categories,
+            "backend": decision.backend,
         }
         with self._log_path.open("a") as f:
             f.write(json.dumps(row) + "\n")

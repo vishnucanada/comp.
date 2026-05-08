@@ -1,11 +1,11 @@
 """Compliance report generator.
 
-Combines policy summary, adversarial suppression rates, and audit log statistics
-into an auditor-readable document (Markdown or JSON).
+Combines policy summary with audit-log statistics into an auditor-readable
+document (Markdown or JSON). Reads JSONL audit logs produced by PolicyGate.
 
-Scope note: this report covers inference-time behavioral suppression and audit
-trail integrity. It is not a complete compliance certification — see gdpr.py
-module docstring for full scope.
+Scope: this report is a useful operational artefact for review, not a
+compliance certification. It documents what the gate did; it does not attest
+that the gate's policy is itself sufficient under any specific regulation.
 """
 
 from __future__ import annotations
@@ -22,18 +22,14 @@ class ComplianceReport:
     policy_name: str
     generated_at: str
     policy_rules: list[dict[str, Any]] = field(default_factory=list)
-    suppression_rates: dict[str, float] = field(default_factory=dict)
     audit_stats: dict[str, Any] = field(default_factory=dict)
-    tamper_verification: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "policy_name": self.policy_name,
             "generated_at": self.generated_at,
             "policy_rules": self.policy_rules,
-            "suppression_rates": self.suppression_rates,
             "audit_stats": self.audit_stats,
-            "tamper_verification": self.tamper_verification,
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -55,31 +51,13 @@ class ComplianceReport:
             lines.append("**Denied categories:**")
             for r in deny_rules:
                 kws = ", ".join(r.get("keywords", [])[:5])
-                sev = r.get("severity", "none")
-                sev_tag = f" (severity: {sev})" if sev != "none" else ""
-                art = r.get("article")
-                art_tag = f" Art. {art}" if art else ""
-                lines.append(f"- **{r['category']}**{sev_tag}{art_tag} — `{kws}`")
+                lines.append(f"- **{r['category']}** — `{kws}`")
 
         if allow_rules:
             lines.append("")
             lines.append("**Allowed categories:**")
             for r in allow_rules:
                 lines.append(f"- {r['category']}")
-
-        if self.suppression_rates:
-            lines += ["", "## Adversarial Suppression Rates", ""]
-            lines.append("| Attack Type | Rate | Status |")
-            lines.append("|---|---|---|")
-            for attack, rate in self.suppression_rates.items():
-                pct = f"{rate:.0%}"
-                if rate >= 0.9:
-                    status = "PASS"
-                elif rate < 0.7:
-                    status = "FAIL"
-                else:
-                    status = "MARGINAL"
-                lines.append(f"| {attack} | {pct} | {status} |")
 
         if self.audit_stats:
             lines += ["", "## Audit Log", ""]
@@ -91,33 +69,18 @@ class ComplianceReport:
                 else:
                     lines.append(f"- **{k}**: {v}")
 
-        if self.tamper_verification:
-            lines += ["", "## Tamper Verification", ""]
-            tv = self.tamper_verification
-            passed = tv.get("tampered", 0) == 0 and tv.get("unsigned", 0) == 0
-            lines.append(f"**Result: {'PASS' if passed else 'FAIL'}**")
-            lines.append("")
-            for k, v in tv.items():
-                lines.append(f"- {k}: {v}")
-
         return "\n".join(lines)
 
 
 def generate_report(
     policy,
-    checkpoint_path: str | Path | None = None,
     audit_log_path: str | Path | None = None,
-    hmac_key: bytes | None = None,
-    model_id: str = "Qwen/Qwen2.5-0.5B",
 ) -> ComplianceReport:
     """Build a ComplianceReport for the given policy.
 
     Args:
         policy: Policy object, or a str/Path to a policy file.
-        checkpoint_path: NLPN checkpoint directory. If provided, runs adversarial eval.
         audit_log_path: JSONL audit log path. If provided, includes usage statistics.
-        hmac_key: HMAC secret for tamper verification (requires audit_log_path).
-        model_id: Base model ID for adversarial eval (only used with checkpoint_path).
     """
     from .policy import Policy
 
@@ -125,67 +88,24 @@ def generate_report(
         policy = Policy.from_file(policy)
 
     rules = [
-        {
-            "action": r.action,
-            "category": r.category,
-            "keywords": r.keywords,
-            "severity": r.severity,
-            "article": r.article,
-        }
+        {"action": r.action, "category": r.category, "keywords": r.keywords}
         for r in policy.rules
     ]
-
-    suppression: dict[str, float] = {}
-    if checkpoint_path:
-        suppression = _run_adversarial_eval(policy, checkpoint_path, model_id)
 
     audit_stats: dict[str, Any] = {}
     if audit_log_path:
         audit_stats = _summarize_audit_log(audit_log_path)
 
-    tamper: dict[str, int] = {}
-    if hmac_key and audit_log_path:
-        from .gdpr import verify_audit_log
-        tamper = verify_audit_log(audit_log_path, hmac_key)
-
     return ComplianceReport(
         policy_name=policy.name,
         generated_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
         policy_rules=rules,
-        suppression_rates=suppression,
         audit_stats=audit_stats,
-        tamper_verification=tamper,
     )
 
 
-def _run_adversarial_eval(policy, checkpoint_path, model_id: str) -> dict[str, float]:
-    """Load NLPN checkpoint and run adversarial evaluation."""
-    try:
-        import src
-        from src.enforcer import get_device, load_model
-        from src.train import build_adversarial_examples_by_type, evaluate_adversarial
-
-        device = get_device()
-        model, tokenizer = load_model(model_id, device)
-        rmax = src.detect_rmax(model)
-        src.wrap_with_nlpn(model, rmax=rmax)
-        src.load_nlpn(model, checkpoint_path)
-        model.eval()
-
-        cfg_path = Path(checkpoint_path) / "nlpn_config.json"
-        low_g = 1
-        if cfg_path.exists():
-            cfg = json.loads(cfg_path.read_text())
-            low_g = cfg.get("low_g", 1) or 1
-
-        examples = build_adversarial_examples_by_type(policy)
-        return evaluate_adversarial(model, tokenizer, examples, low_g=low_g, policy=policy)
-    except Exception as exc:
-        return {"error": str(exc)}
-
-
 def _summarize_audit_log(path: str | Path) -> dict[str, Any]:
-    """Read a JSONL audit log (gate or GDPR format) and return summary statistics."""
+    """Read a JSONL gate audit log and return summary statistics."""
     path = Path(path)
     if not path.exists():
         return {"error": f"{path} not found"}
@@ -193,6 +113,7 @@ def _summarize_audit_log(path: str | Path) -> dict[str, Any]:
     total = denied = 0
     cat_counts: dict[str, int] = {}
     role_counts: dict[str, int] = {}
+    backend_counts: dict[str, int] = {}
 
     with path.open() as f:
         for line in f:
@@ -204,19 +125,16 @@ def _summarize_audit_log(path: str | Path) -> dict[str, Any]:
             except json.JSONDecodeError:
                 continue
             total += 1
-            # Support both gate log format (allowed) and GDPR format (privilege_granted/rmax)
-            if "allowed" in row:
-                is_allowed = row["allowed"]
-            else:
-                is_allowed = row.get("privilege_granted", 1) == row.get("rmax", 1)
-            if not is_allowed:
+            if not row.get("allowed", True):
                 denied += 1
-            cats = row.get("categories", row.get("triggered_categories", []))
-            for cat in cats:
+            for cat in row.get("categories", []):
                 cat_counts[cat] = cat_counts.get(cat, 0) + 1
             role = row.get("user_role")
             if role:
                 role_counts[role] = role_counts.get(role, 0) + 1
+            backend = row.get("backend")
+            if backend:
+                backend_counts[backend] = backend_counts.get(backend, 0) + 1
 
     stats: dict[str, Any] = {
         "total_requests": total,
@@ -225,7 +143,9 @@ def _summarize_audit_log(path: str | Path) -> dict[str, Any]:
     }
     if cat_counts:
         top = sorted(cat_counts.items(), key=lambda x: -x[1])[:5]
-        stats["top_triggered_categories"] = {k: v for k, v in top}
+        stats["top_triggered_categories"] = dict(top)
     if role_counts:
         stats["requests_by_role"] = role_counts
+    if backend_counts:
+        stats["decisions_by_backend"] = backend_counts
     return stats

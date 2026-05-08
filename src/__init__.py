@@ -1,75 +1,54 @@
-"""
-comp — privilege-conditioned LLM deployment via rank-reduced weight approximation.
+"""comp. — policy-as-code for LLM API calls.
 
-MAE stack
----------
-Translate  →  PolicyTranslator          (natural language → Policy)
-Monitor    →  PolicyCompiler            (Policy → request-time signals)
-Allocator  →  PolicyAllocator           (signals + user_role → privilege g)
-           →  GDPRAllocator             (tiered by GDPR article severity + audit log)
-Enforcer   →  wrap_with_nlpn            (g → rank-restricted forward pass)
+A small enforcement layer for any LLM backend. Define DENY/ALLOW rules in a
+text policy, plug in a content guard (keyword, OpenAI moderation, Llama Guard),
+optionally attach IAM roles, and gate every call through PolicyGate. Every
+decision goes to an append-only JSONL audit log.
+
+Quick start
+-----------
+    from src import IAMConfig, KeywordGuard, Policy, PolicyGate
+
+    policy = Policy.from_file("policies/hr.txt")
+    iam = IAMConfig.from_yaml("iam.yaml")
+    gate = PolicyGate(policy, guard=KeywordGuard(policy), iam=iam,
+                      audit_log_path="audit/gate.jsonl")
+
+    response, decision = gate.complete(
+        message="What is John's salary?",
+        fn=lambda m: claude.messages.create(...).content[0].text,
+        user_role="anonymous",
+    )
 """
 
-from .enforcer import (
-    DEFAULT_MODEL_ID,
-    detect_rmax,
-    get_device,
-    get_rmax,
-    load_model,
-    load_nlpn,
-    save_nlpn,
-    set_privilege,
-    wrap_with_nlpn,
-)
 from .gate import GateDecision, PolicyGate
-from .gdpr import AuditLog, GDPRAllocator, GDPRPolicyParser, verify_audit_log
-from .iam import IAMConfig, Role
-from .nlpn import NLPNLinear
-from .policy import Policy, PolicyAllocator, PolicyCompiler
-from .report import ComplianceReport, generate_report
-from .train import (
-    TrainConfig,
-    build_adversarial_examples_by_type,
-    build_deny_examples,
-    calibrate_privilege,
-    evaluate_adversarial,
-    evaluate_nlpn,
-    generate_deny_examples,
-    train_nlpn,
+from .guard import (
+    CompositeGuard,
+    Guard,
+    GuardResult,
+    KeywordGuard,
+    LlamaGuardGuard,
+    OpenAIModerationGuard,
+    make_guard,
 )
-from .translator import PolicyTranslator
+from .iam import IAMConfig, Role
+from .policy import Policy, PolicyCompiler
+from .report import ComplianceReport, generate_report
 
 __all__ = [
-    "NLPNLinear",
-    "IAMConfig",
-    "Role",
-    "PolicyGate",
-    "GateDecision",
     "ComplianceReport",
-    "generate_report",
-    "wrap_with_nlpn",
-    "set_privilege",
-    "get_rmax",
-    "detect_rmax",
-    "save_nlpn",
-    "load_nlpn",
-    "get_device",
-    "load_model",
-    "DEFAULT_MODEL_ID",
+    "CompositeGuard",
+    "GateDecision",
+    "Guard",
+    "GuardResult",
+    "IAMConfig",
+    "KeywordGuard",
+    "LlamaGuardGuard",
+    "OpenAIModerationGuard",
     "Policy",
     "PolicyCompiler",
-    "PolicyAllocator",
-    "PolicyTranslator",
-    "GDPRAllocator",
-    "GDPRPolicyParser",
-    "AuditLog",
-    "verify_audit_log",
-    "train_nlpn",
-    "build_deny_examples",
-    "build_adversarial_examples_by_type",
-    "generate_deny_examples",
-    "TrainConfig",
-    "evaluate_nlpn",
-    "evaluate_adversarial",
-    "calibrate_privilege",
+    "PolicyGate",
+    "Role",
+    "generate_report",
+    "make_guard",
 ]
